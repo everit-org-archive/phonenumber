@@ -61,7 +61,7 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
     private Area convertPhoneNumberAreaEntityToArea(final PhoneNumberAreaEntity entity) {
         if (entity != null) {
             Area area = new Area(entity.getPhoneNumberCountry().getCountryISO3166A2Code(), entity.getCallNumber(),
-                    entity.getName(), entity.getSubscriberNumberLength(), entity.isActive());
+                    entity.getAreaName(), entity.getSubscriberNumberLength(), entity.isActive());
             return area;
         }
         return null;
@@ -343,7 +343,7 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
         PhoneNumberAreaEntity entity = new PhoneNumberAreaEntity();
         entity.setPhoneNumberCountry(em.getReference(PhoneNumberCountryEntity.class, countryISO3166A2Code));
         entity.setCallNumber(callNumber);
-        entity.setName(name);
+        entity.setAreaName(name);
         entity.setSubscriberNumberLength(subscriberNumberLength);
         entity.setActive(true);
         em.persist(entity);

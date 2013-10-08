@@ -53,8 +53,8 @@ public class PhoneNumberAreaEntity {
     /**
      * The descriptive name for the region.
      */
-    @Column(name = "NAME")
-    private String name;
+    @Column(name = "AREA_NAME")
+    private String areaName;
 
     /**
      * The expected length of the phone number in the local (country) area code.
@@ -72,7 +72,7 @@ public class PhoneNumberAreaEntity {
      * The {@link PhoneNumberCountryEntity} object.
      */
     @ManyToOne
-    @JoinColumn(name = "COUNTRY_CODE", referencedColumnName = "COUNTRY_ISO3166_A2_CODE")
+    @JoinColumn(name = "COUNTRY_CODE_ID", referencedColumnName = "COUNTRY_ISO3166_A2_CODE")
     private PhoneNumberCountryEntity phoneNumberCountry;
 
     /**
@@ -102,7 +102,7 @@ public class PhoneNumberAreaEntity {
             final boolean active, final PhoneNumberCountryEntity phoneNumberCountry) {
         this.phoneAreaId = phoneAreaId;
         this.callNumber = callNumber;
-        this.name = name;
+        areaName = name;
         this.subscriberNumberLength = subscriberNumberLength;
         this.active = active;
         this.phoneNumberCountry = phoneNumberCountry;
@@ -112,8 +112,8 @@ public class PhoneNumberAreaEntity {
         return callNumber;
     }
 
-    public String getName() {
-        return name;
+    public String getAreaName() {
+        return areaName;
     }
 
     public long getPhoneAreaId() {
@@ -136,12 +136,12 @@ public class PhoneNumberAreaEntity {
         this.active = active;
     }
 
-    public void setCallNumber(final String callNumber) {
-        this.callNumber = callNumber;
+    public void setAreaName(final String areaName) {
+        this.areaName = areaName;
     }
 
-    public void setName(final String name) {
-        this.name = name;
+    public void setCallNumber(final String callNumber) {
+        this.callNumber = callNumber;
     }
 
     public void setPhoneAreaId(final long phoneAreaId) {

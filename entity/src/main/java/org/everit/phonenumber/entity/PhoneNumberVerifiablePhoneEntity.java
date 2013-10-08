@@ -23,41 +23,31 @@ package org.everit.phonenumber.entity;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 
-import org.everit.phonenumber.api.enums.VerificationType;
 import org.everit.verifiabledata.entity.VerifiableDataEntity;
 
 /**
- * The entity of the phone number verification.
+ * The entity of the verifiable phone.
  */
 @Entity
-@Table(name = "PHONENUMBER_VERIFICATION")
-public class PhoneNumberVerificationEntity {
+@Table(name = "PHONENUMBER_VERIFIABLE_PHONE")
+public class PhoneNumberVerifiablePhoneEntity {
 
     /**
-     * The id of the phone number verification.
+     * The id of the verifiable phone.
      */
     @Id
     @GeneratedValue
-    @Column(name = "PHONENUMBER_VERIFICIATION_ID")
-    private long phoneNumberVerificationId;
+    @Column(name = "VERIFIABLE_PHONE_ID")
+    private long verifiablePhoneId;
 
     /**
-     * The type of the verification.
-     */
-    @Enumerated(EnumType.STRING)
-    @Column(name = "PHONE_VERIFICTION_TYPE")
-    private VerificationType verificationType;
-
-    /**
-     * The id of the phone number. The {@link PhoneNumberEntity} object.
+     * The id of the verifiable phone. The {@link PhoneNumberEntity} object.
      */
     @ManyToOne
     @JoinColumn(name = "PHONE_NUMBER_ID", referencedColumnName = "PHONE_NUMBER_ID")
@@ -73,25 +63,22 @@ public class PhoneNumberVerificationEntity {
     /**
      * The default constructor.
      */
-    public PhoneNumberVerificationEntity() {
+    public PhoneNumberVerifiablePhoneEntity() {
     }
 
     /**
      * The simple constructor.
      * 
-     * @param phoneNumberVerificationId
-     *            the id of the phone number verification.
-     * @param verificationType
-     *            the type of the verification. Using the {@link VerificationType} enum class.
+     * @param verifiablePhoneId
+     *            the id of the verifiable phone.
      * @param phoneNumber
      *            the {@link PhoneNumberEntity} object.
      * @param verifiableData
      *            the {@link VerifiableDataEntity} object.
      */
-    public PhoneNumberVerificationEntity(final long phoneNumberVerificationId, final VerificationType verificationType,
-            final PhoneNumberEntity phoneNumber, final VerifiableDataEntity verifiableData) {
-        this.phoneNumberVerificationId = phoneNumberVerificationId;
-        this.verificationType = verificationType;
+    public PhoneNumberVerifiablePhoneEntity(final long verifiablePhoneId, final PhoneNumberEntity phoneNumber,
+            final VerifiableDataEntity verifiableData) {
+        this.verifiablePhoneId = verifiablePhoneId;
         this.phoneNumber = phoneNumber;
         this.verifiableData = verifiableData;
     }
@@ -100,32 +87,24 @@ public class PhoneNumberVerificationEntity {
         return phoneNumber;
     }
 
-    public long getPhoneNumberVerificationId() {
-        return phoneNumberVerificationId;
-    }
-
     public VerifiableDataEntity getVerifiableData() {
         return verifiableData;
     }
 
-    public VerificationType getVerificationType() {
-        return verificationType;
+    public long getVerifiablePhoneId() {
+        return verifiablePhoneId;
     }
 
     public void setPhoneNumber(final PhoneNumberEntity phoneNumber) {
         this.phoneNumber = phoneNumber;
     }
 
-    public void setPhoneNumberVerificationId(final long phoneNumberVerificationId) {
-        this.phoneNumberVerificationId = phoneNumberVerificationId;
-    }
-
     public void setVerifiableData(final VerifiableDataEntity verifiableData) {
         this.verifiableData = verifiableData;
     }
 
-    public void setVerificationType(final VerificationType verificationType) {
-        this.verificationType = verificationType;
+    public void setVerifiablePhoneId(final long verifiablePhoneId) {
+        this.verifiablePhoneId = verifiablePhoneId;
     }
 
 }
