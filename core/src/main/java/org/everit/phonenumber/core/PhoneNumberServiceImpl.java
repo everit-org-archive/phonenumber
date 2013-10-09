@@ -22,6 +22,7 @@ package org.everit.phonenumber.core;
  */
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import javax.persistence.EntityManager;
@@ -33,10 +34,10 @@ import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
 
 import org.everit.phonenumber.api.PhoneNumberService;
+import org.everit.phonenumber.api.PhoneVerificationResult;
 import org.everit.phonenumber.api.dto.Area;
 import org.everit.phonenumber.api.dto.CallablePhoneNumber;
 import org.everit.phonenumber.api.dto.Country;
-import org.everit.phonenumber.api.enums.VerificationType;
 import org.everit.phonenumber.api.exceptions.DuplicateCountryException;
 import org.everit.phonenumber.api.exceptions.DuplicateSelectableAreaException;
 import org.everit.phonenumber.api.exceptions.InvalidNumberException;
@@ -49,6 +50,9 @@ import org.everit.phonenumber.entity.PhoneNumberCountryEntity;
 import org.everit.phonenumber.entity.PhoneNumberCountryEntity_;
 import org.everit.phonenumber.entity.PhoneNumberEntity;
 import org.everit.phonenumber.entity.PhoneNumberEntity_;
+import org.everit.phonenumber.entity.PhoneNumberVerifiablePhoneEntity;
+import org.everit.phonenumber.entity.PhoneNumberVerifiablePhoneEntity_;
+import org.everit.verifiabledata.api.enums.VerificationLengthBase;
 
 /**
  * Implementation of the {@link PhoneNumberService}.
@@ -61,8 +65,11 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
     private EntityManager em;
 
     @Override
-    public void createVerificationRequest(final long phoneNumberId, final VerificationType verificationChannel) {
+    public void createVerificationRequestViaSMS(final long phoneNumberId, final String messagetemplate,
+            final Date tokenValidityEndDate,
+            final long verificationLength, final VerificationLengthBase verificationLengthBase) {
         // TODO Auto-generated method stub
+
     }
 
     private boolean existAreaByCountryCodeAndCallNumber(final String countryISO3166A2Code,
@@ -229,6 +236,39 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
         return null;
     }
 
+    @Override
+    public CallablePhoneNumber getCallablePhoneNumberByVerifiableId(final long verifiablePhoneId) {
+        return getCallablePhoneNumberByVerifiablePhoneId(verifiablePhoneId);
+    }
+
+    // TODO testing getCallablePhoneNumberByVerifiablePhoneId
+    private CallablePhoneNumber getCallablePhoneNumberByVerifiablePhoneId(final long verifiablePhoneId) {
+        CriteriaBuilder cb = em.getCriteriaBuilder();
+        CriteriaQuery<CallablePhoneNumber> criteriaQuery = cb.createQuery(CallablePhoneNumber.class);
+
+        Root<PhoneNumberVerifiablePhoneEntity> root =
+                criteriaQuery.from(PhoneNumberVerifiablePhoneEntity.class);
+        Join<PhoneNumberVerifiablePhoneEntity, PhoneNumberEntity> pn = root
+                .join(PhoneNumberVerifiablePhoneEntity_.phoneNumber);
+        Join<PhoneNumberEntity, PhoneNumberAreaEntity> pna = pn.join(PhoneNumberEntity_.phoneNumberArea);
+        Join<PhoneNumberAreaEntity, PhoneNumberCountryEntity> pnc = pna.join(PhoneNumberAreaEntity_.phoneNumberCountry);
+
+        criteriaQuery.multiselect(pnc.get(PhoneNumberCountryEntity_.iddPrefix),
+                pnc.get(PhoneNumberCountryEntity_.nddPrefix), pnc.get(PhoneNumberCountryEntity_.countryCallCode),
+                pna.get(PhoneNumberAreaEntity_.callNumber), pn.get(PhoneNumberEntity_.subScriberNumber),
+                pn.get(PhoneNumberEntity_.extension));
+
+        Predicate predicate = cb
+                .equal(root.get(PhoneNumberVerifiablePhoneEntity_.verifiablePhoneId), verifiablePhoneId);
+
+        criteriaQuery.where(predicate);
+        List<CallablePhoneNumber> resultList = em.createQuery(criteriaQuery).getResultList();
+        if (resultList.size() == 1) {
+            return resultList.get(0);
+        }
+        return null;
+    }
+
     private List<Country> getCountriesByActive(final Long startPosition,
             final Long maxResultCount) {
         CriteriaBuilder cb = em.getCriteriaBuilder();
@@ -311,7 +351,6 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
     @Override
     public void inactiveArea(final long areaId) {
         // TODO Auto-generated method stub
-
     }
 
     @Override
@@ -434,5 +473,11 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
         pnEntity.setPhoneNumberArea(em.getReference(PhoneNumberAreaEntity.class, areaId));
         em.merge(pnEntity);
         em.flush();
+    }
+
+    @Override
+    public PhoneVerificationResult verifyPhoneNumber(final String tokenUUID) {
+        // TODO Auto-generated method stub
+        return null;
     }
 }

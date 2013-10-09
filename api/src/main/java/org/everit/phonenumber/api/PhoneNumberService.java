@@ -21,16 +21,17 @@ package org.everit.phonenumber.api;
  * MA 02110-1301  USA
  */
 
+import java.util.Date;
 import java.util.List;
 
 import org.everit.phonenumber.api.dto.Area;
 import org.everit.phonenumber.api.dto.CallablePhoneNumber;
 import org.everit.phonenumber.api.dto.Country;
-import org.everit.phonenumber.api.enums.VerificationType;
 import org.everit.phonenumber.api.exceptions.DuplicateCountryException;
 import org.everit.phonenumber.api.exceptions.NoSuchAreaException;
 import org.everit.phonenumber.api.exceptions.NoSuchPhoneNumberException;
 import org.everit.phonenumber.api.exceptions.NonPositiveSubscriberNumberLengthException;
+import org.everit.verifiabledata.api.enums.VerificationLengthBase;
 
 /*
  * Copyright (c) 2011, Everit Kft.
@@ -59,14 +60,21 @@ import org.everit.phonenumber.api.exceptions.NonPositiveSubscriberNumberLengthEx
 public interface PhoneNumberService {
 
     /**
-     * Creating the verification.
+     * Create verification request and send SMS to verify the phone number.
      * 
      * @param phoneNumberId
      *            the id of the phone number.
-     * @param verificationChannel
-     *            what kind of the verification. Using the {@link VerificationType} enum class.
+     * @param messagetemplate
+     *            the messageTemplate.
+     * @param tokenValidityEndDate
+     *            the token validity end date.
+     * @param verificationLength
+     *            the verification length.
+     * @param verificationLengthBase
+     *            the {@link VerificationLengthBase}.
      */
-    void createVerificationRequest(final long phoneNumberId, final VerificationType verificationChannel);
+    void createVerificationRequestViaSMS(long phoneNumberId, String messagetemplate,
+            Date tokenValidityEndDate, long verificationLength, VerificationLengthBase verificationLengthBase);
 
     /**
      * Finds and getting the area based on country code and area call number.
@@ -99,6 +107,15 @@ public interface PhoneNumberService {
      * @return the {@link CallablePhoneNumber} object if exist the phone number id, otherwise return <code>null</code>.
      */
     CallablePhoneNumber getCallablePhoneNumber(final long phoneNumberId);
+
+    /**
+     * Getting the callable phone number based on the verifiable phone id.
+     * 
+     * @param verifiablePhoneId
+     *            the id of the verifiable phone.
+     * @return the {@link CallablePhoneNumber} object if exist the phone number id, otherwise return <code>null</code>.
+     */
+    CallablePhoneNumber getCallablePhoneNumberByVerifiableId(long verifiablePhoneId);
 
     /**
      * Getting the country based on countryISO3166A2Code.
@@ -243,4 +260,14 @@ public interface PhoneNumberService {
      */
     void updatePhoneNumber(final long phoneNumberId, final long areaId, final String subscriberNumber,
             final String extension);
+
+    /**
+     * Verify the phone number.
+     * 
+     * @param tokenUUID
+     *            the token UUID.
+     * @return the {@link PhoneVerificationResult} object.
+     */
+    PhoneVerificationResult verifyPhoneNumber(String tokenUUID);
+
 }

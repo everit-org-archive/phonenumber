@@ -64,6 +64,10 @@
 	</build>
 
 	<dependencies>
-        
+        <dependency>
+            <groupId>org.everit.emailaddress</groupId>
+            <artifactId>org.everit.emailaddress.api</artifactId>
+            <version>0.1.0-SNAPSHOT</version>
+        </dependency>
 	</dependencies>
 </project>
