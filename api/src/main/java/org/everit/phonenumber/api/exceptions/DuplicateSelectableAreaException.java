@@ -1,4 +1,4 @@
-package org.everit.phonenumber.entity;
+package org.everit.phonenumber.api.exceptions;
 
 /*
  * Copyright (c) 2011, Everit Kft.
@@ -21,18 +21,17 @@ package org.everit.phonenumber.entity;
  * MA 02110-1301  USA
  */
 
-import javax.annotation.Generated;
-import javax.persistence.metamodel.SingularAttribute;
-import javax.persistence.metamodel.StaticMetamodel;
-import org.everit.verifiabledata.entity.VerifiableDataEntity;
+public class DuplicateSelectableAreaException extends RuntimeException {
 
-@Generated(value = "org.hibernate.jpamodelgen.JPAMetaModelEntityProcessor")
-@StaticMetamodel(PhoneNumberVerifiablePhoneEntity.class)
-public abstract class PhoneNumberVerifiablePhoneEntity_ {
+    /**
+     * The generated serial version UID.
+     */
+    private static final long serialVersionUID = 7896934198922932708L;
 
-	public static volatile SingularAttribute<PhoneNumberVerifiablePhoneEntity, PhoneNumberEntity> phoneNumber;
-	public static volatile SingularAttribute<PhoneNumberVerifiablePhoneEntity, Long> verifiablePhoneId;
-	public static volatile SingularAttribute<PhoneNumberVerifiablePhoneEntity, VerifiableDataEntity> verifiableData;
-
+    /**
+     * The simple constructor.
+     */
+    public DuplicateSelectableAreaException() {
+        super("Existing the area code which belong the country code.");
+    }
 }
-

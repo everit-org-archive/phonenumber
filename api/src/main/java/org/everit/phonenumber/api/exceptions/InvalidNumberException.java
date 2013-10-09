@@ -1,4 +1,4 @@
-package org.everit.phonenumber.api.expections;
+package org.everit.phonenumber.api.exceptions;
 
 /*
  * Copyright (c) 2011, Everit Kft.
@@ -21,14 +21,14 @@ package org.everit.phonenumber.api.expections;
  * MA 02110-1301  USA
  */
 
-public class InvalidNumberExcption extends RuntimeException {
+public class InvalidNumberException extends RuntimeException {
 
     /**
      * Generated serial version UID.
      */
     private static final long serialVersionUID = -4744519270092645764L;
 
-    public InvalidNumberExcption() {
+    public InvalidNumberException() {
         super("The phone number is invalid, because the number length not matching the subscriberNumberLength.");
     }
 }

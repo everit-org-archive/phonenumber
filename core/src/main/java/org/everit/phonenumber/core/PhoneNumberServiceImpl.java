@@ -28,6 +28,7 @@ import javax.persistence.EntityManager;
 import javax.persistence.TypedQuery;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Join;
 import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
 
@@ -36,214 +37,60 @@ import org.everit.phonenumber.api.dto.Area;
 import org.everit.phonenumber.api.dto.CallablePhoneNumber;
 import org.everit.phonenumber.api.dto.Country;
 import org.everit.phonenumber.api.enums.VerificationType;
-import org.everit.phonenumber.api.expections.DuplicateSelectableAreaException;
-import org.everit.phonenumber.api.expections.InvalidNumberExcption;
+import org.everit.phonenumber.api.exceptions.DuplicateCountryException;
+import org.everit.phonenumber.api.exceptions.DuplicateSelectableAreaException;
+import org.everit.phonenumber.api.exceptions.InvalidNumberException;
+import org.everit.phonenumber.api.exceptions.NoSuchAreaException;
+import org.everit.phonenumber.api.exceptions.NoSuchPhoneNumberException;
+import org.everit.phonenumber.api.exceptions.NonPositiveSubscriberNumberLengthException;
 import org.everit.phonenumber.entity.PhoneNumberAreaEntity;
 import org.everit.phonenumber.entity.PhoneNumberAreaEntity_;
 import org.everit.phonenumber.entity.PhoneNumberCountryEntity;
 import org.everit.phonenumber.entity.PhoneNumberCountryEntity_;
 import org.everit.phonenumber.entity.PhoneNumberEntity;
+import org.everit.phonenumber.entity.PhoneNumberEntity_;
 
 /**
  * Implementation of the {@link PhoneNumberService}.
  */
 public class PhoneNumberServiceImpl implements PhoneNumberService {
 
+    /**
+     * EntityManager set by blueprint.
+     */
     private EntityManager em;
-
-    /**
-     * Convert {@link PhoneNumberAreaEntity} to {@link Area} object.
-     * 
-     * @param entity
-     *            the {@link PhoneNumberAreaEntity} object.
-     * @return the {@link Area} object if not null the parameter, otherwise return <code>null</code>.
-     */
-    private Area convertPhoneNumberAreaEntityToArea(final PhoneNumberAreaEntity entity) {
-        if (entity != null) {
-            Area area = new Area(entity.getPhoneNumberCountry().getCountryISO3166A2Code(), entity.getCallNumber(),
-                    entity.getAreaName(), entity.getSubscriberNumberLength(), entity.isActive());
-            return area;
-        }
-        return null;
-    }
-
-    /**
-     * Convert {@link PhoneNumberCountryEntity} to {@link Country} object.
-     * 
-     * @param entity
-     *            the {@link PhoneNumberCountryEntity} object.
-     * @return the {@link Country} object if not null the parameter, otherwise return <code>null</code>.
-     */
-    private Country convertPhoneNumberCountryEntityToCountry(final PhoneNumberCountryEntity entity) {
-        if (entity != null) {
-            Country country = new Country(entity.getCountryISO3166A2Code(), entity.getIddPrefix(),
-                    entity.getNddPrefix(), entity.getCountryCallCode(), entity.isActive());
-            return country;
-        }
-        return null;
-    }
-
-    /**
-     * Convert {@link PhoneNumberEntity} to {@link CallablePhoneNumber} object.
-     * 
-     * @param entity
-     *            the {@link PhoneNumberEntity} object.
-     * @return the {@link CallablePhoneNumber} object which contains all relevant information if exist. If the parameter
-     *         is <code>null</code> return <code>null</code>.
-     */
-    private CallablePhoneNumber convertPhoneNumberEntityToCallablePhoneNumber(final PhoneNumberEntity entity) {
-        CallablePhoneNumber result = null;
-        if (entity != null) {
-            result = new CallablePhoneNumber(null, null, null, null, null, null);
-            PhoneNumberAreaEntity phoneNumberArea = entity.getPhoneNumberArea();
-            if (phoneNumberArea != null) {
-                PhoneNumberCountryEntity phoneNumberCountry = phoneNumberArea.getPhoneNumberCountry();
-                if (phoneNumberCountry != null) {
-                    result.setCountryIDD(phoneNumberCountry.getIddPrefix());
-                    result.setCountryNDD(phoneNumberCountry.getNddPrefix());
-                    result.setCountryCallCode(phoneNumberCountry.getCountryCallCode());
-                }
-                result.setAreaCallNumber(phoneNumberArea.getCallNumber());
-            }
-            result.setSubscriberNumber(entity.getSubScriberNumber());
-            result.setExtension(entity.getExtension());
-        }
-        return result;
-    }
 
     @Override
     public void createVerificationRequest(final long phoneNumberId, final VerificationType verificationChannel) {
         // TODO Auto-generated method stub
     }
 
-    /**
-     * Finds the {@link PhoneNumberAreaEntity} based on callNumber.
-     * 
-     * @param countryISO3166A2Code
-     *            the country code.
-     * @param callNumber
-     *            the call number.
-     * @return the {@link PhoneNumberAreaEntity} if exist area. If not exist return <code>null</code>.
-     */
-    private PhoneNumberAreaEntity findActivePhoneNumberAreaEntityByCountryCodeAndCallNumber(
-            final String countryISO3166A2Code,
+    private boolean existAreaByCountryCodeAndCallNumber(final String countryISO3166A2Code,
             final String callNumber) {
-        CriteriaBuilder cb = em.getCriteriaBuilder();
-        CriteriaQuery<PhoneNumberAreaEntity> criteriaQuery = cb.createQuery(PhoneNumberAreaEntity.class);
-        Root<PhoneNumberAreaEntity> root = criteriaQuery
-                .from(PhoneNumberAreaEntity.class);
-        Predicate predicate = cb.equal(root.get(PhoneNumberAreaEntity_.callNumber),
-                callNumber);
-        Predicate and = cb.and(
-                predicate,
-                cb.equal(root.get(PhoneNumberAreaEntity_.phoneNumberCountry),
-                        em.getReference(PhoneNumberCountryEntity.class, countryISO3166A2Code)));
-        criteriaQuery.where(cb.and(and, cb.equal(root.get(PhoneNumberAreaEntity_.active), true)));
-        List<PhoneNumberAreaEntity> resultList = em.createQuery(criteriaQuery).getResultList();
-        if (resultList.size() == 1) {
-            return resultList.get(0);
+        Long areaId = getActiveAreaIdByCountryCodeAndCallNumber(countryISO3166A2Code, callNumber);
+        if (areaId != null) {
+            return true;
         }
-        return null;
+        return false;
     }
 
-    /**
-     * Finds all {@link PhoneNumberAreaEntity}s based on countryISO3166A2Code (country code).
-     * 
-     * @param countryISO3166A2Code
-     *            the country code.
-     * @param startPosition
-     *            the first index of the list or null if not defined.
-     * @param maxResultCount
-     *            the maximum number of elements or null if not defined.
-     * @return the {@link PhoneNumberAreaEntity}s in list. If startPosition or maxResultCount negative or no one result
-     *         return empty list.
-     */
-    private List<PhoneNumberAreaEntity> findPhoneNumberAreaEntitiesByCountryCode(final String countryISO3166A2Code,
-            final Long startPosition, final Long maxResultCount) {
+    private boolean existCountry(final String countryISO3166A2Code) {
         CriteriaBuilder cb = em.getCriteriaBuilder();
-        CriteriaQuery<PhoneNumberAreaEntity> criteriaQuery = cb.createQuery(PhoneNumberAreaEntity.class);
-        Root<PhoneNumberAreaEntity> root = criteriaQuery
-                .from(PhoneNumberAreaEntity.class);
-        Predicate predicate = cb.equal(root.get(PhoneNumberAreaEntity_.phoneNumberCountry),
-                em.getReference(PhoneNumberCountryEntity.class, countryISO3166A2Code));
-        Predicate and = cb.and(
-                predicate,
-                cb.equal(root.get(PhoneNumberAreaEntity_.active), true));
-        criteriaQuery.where(and);
-        TypedQuery<PhoneNumberAreaEntity> query = em.createQuery(criteriaQuery);
-        List<PhoneNumberAreaEntity> resultList = new ArrayList<PhoneNumberAreaEntity>();
-        if ((startPosition == null) && (maxResultCount == null)) {
-            resultList = query.getResultList();
-        } else if ((startPosition == null) && (maxResultCount >= 0L)) {
-            int maxResult = Integer.parseInt(Long.toString(maxResultCount));
-            resultList = query.setMaxResults(maxResult).getResultList();
-        } else if ((startPosition != null) && (startPosition >= 0L) && (maxResultCount == null)) {
-            int position = Integer.parseInt(Long.toString(startPosition));
-            resultList = query.setFirstResult(position).getResultList();
-        } else if ((startPosition != null) && (startPosition >= 0L) && (maxResultCount >= 0L)) {
-            int position = Integer.parseInt(Long.toString(startPosition));
-            int maxResult = Integer.parseInt(Long.toString(maxResultCount));
-            resultList = query.setFirstResult(position).setMaxResults(maxResult).getResultList();
-        } else {
-            resultList = new ArrayList<PhoneNumberAreaEntity>();
-        }
-        return resultList;
-    }
+        CriteriaQuery<String> criteriaQuery = cb.createQuery(String.class);
 
-    /**
-     * Finds the {@link PhoneNumberAreaEntity} based on area id.
-     * 
-     * @param areaId
-     *            the id of the {@link PhoneNumberAreaEntity}.
-     * @return the {@link PhoneNumberAreaEntity} if exist, otherwise return <code>null</code>.
-     */
-    private PhoneNumberAreaEntity findPhoneNumberAreaEntityByAreaId(final long areaId) {
-        return em.find(PhoneNumberAreaEntity.class, areaId);
-    }
+        Root<PhoneNumberCountryEntity> root =
+                criteriaQuery.from(PhoneNumberCountryEntity.class);
 
-    /**
-     * Finds all {@link PhoneNumberCountryEntity}s based on active.
-     * 
-     * @return the {@link PhoneNumberCountryEntity}s in list. If no one return empty list.
-     */
-    private List<PhoneNumberCountryEntity> findPhoneNumberCountryEntitiesByActive(final Long startPosition,
-            final Long maxResultCount) {
-        CriteriaBuilder cb = em.getCriteriaBuilder();
-        CriteriaQuery<PhoneNumberCountryEntity> criteriaQuery = cb.createQuery(PhoneNumberCountryEntity.class);
-        Root<PhoneNumberCountryEntity> root = criteriaQuery
-                .from(PhoneNumberCountryEntity.class);
-        Predicate predicate = cb.equal(root.get(PhoneNumberCountryEntity_.active), true);
+        criteriaQuery.select(root.get(PhoneNumberCountryEntity_.iddPrefix));
+
+        Predicate predicate = cb.equal(root.get(PhoneNumberCountryEntity_.countryISO3166A2Code), countryISO3166A2Code);
+
         criteriaQuery.where(predicate);
-        TypedQuery<PhoneNumberCountryEntity> query = em.createQuery(criteriaQuery);
-        List<PhoneNumberCountryEntity> resultList = new ArrayList<PhoneNumberCountryEntity>();
-        if ((startPosition == null) && (maxResultCount == null)) {
-            resultList = query.getResultList();
-        } else if ((startPosition == null) && (maxResultCount >= 0L)) {
-            int maxResult = Integer.parseInt(Long.toString(maxResultCount));
-            resultList = query.setMaxResults(maxResult).getResultList();
-        } else if ((startPosition != null) && (startPosition >= 0L) && (maxResultCount == null)) {
-            int position = Integer.parseInt(Long.toString(startPosition));
-            resultList = query.setFirstResult(position).getResultList();
-        } else if ((startPosition != null) && (startPosition >= 0L) && (maxResultCount >= 0L)) {
-            int position = Integer.parseInt(Long.toString(startPosition));
-            int maxResult = Integer.parseInt(Long.toString(maxResultCount));
-            resultList = query.setFirstResult(position).setMaxResults(maxResult).getResultList();
-        } else {
-            resultList = new ArrayList<PhoneNumberCountryEntity>();
+        List<String> resultList = em.createQuery(criteriaQuery).getResultList();
+        if (resultList.size() == 1) {
+            return true;
         }
-        return resultList;
-    }
-
-    /**
-     * Finds the {@link PhoneNumberCountryEntity} based on countryISO3166A2Code.
-     * 
-     * @param countryISO3166A2Code
-     *            the country code.
-     * @return the {@link PhoneNumberCountryEntity} object if exist. If not exist return <code>null</code>.
-     */
-    private PhoneNumberCountryEntity findPhoneNumberCountryEntityByCountryISO3166A2Code(
-            final String countryISO3166A2Code) {
-        return em.find(PhoneNumberCountryEntity.class, countryISO3166A2Code);
+        return false;
     }
 
     /**
@@ -257,25 +104,160 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
         return em.find(PhoneNumberEntity.class, phoneNumberId);
     }
 
+    private Area getActiveAreaByAreaId(final long areaId) {
+        CriteriaBuilder cb = em.getCriteriaBuilder();
+        CriteriaQuery<Area> criteriaQuery = cb.createQuery(Area.class);
+
+        Root<PhoneNumberAreaEntity> root =
+                criteriaQuery.from(PhoneNumberAreaEntity.class);
+        Join<PhoneNumberAreaEntity, PhoneNumberCountryEntity> pnc = root
+                .join(PhoneNumberAreaEntity_.phoneNumberCountry);
+        criteriaQuery.multiselect(pnc.get(PhoneNumberCountryEntity_.countryISO3166A2Code),
+                root.get(PhoneNumberAreaEntity_.callNumber), root.get(PhoneNumberAreaEntity_.areaName),
+                root.get(PhoneNumberAreaEntity_.subscriberNumberLength), root.get(PhoneNumberAreaEntity_.active));
+        Predicate predicate = cb.equal(root.get(PhoneNumberAreaEntity_.phoneAreaId), areaId);
+
+        criteriaQuery.where(predicate);
+        List<Area> resultList = em.createQuery(criteriaQuery).getResultList();
+        if (resultList.size() == 1) {
+            return resultList.get(0);
+        }
+        return null;
+    }
+
     @Override
     public Area getActiveAreaByCountryAndCallNumber(final String countryISO3166A2Code, final String areaCallNumber) {
         if ((countryISO3166A2Code == null) || (areaCallNumber == null)) {
             throw new IllegalArgumentException("The countryISO3166A2Code or areaCallNumber parameter is null.");
         }
-        PhoneNumberAreaEntity pnAreaEntity = findActivePhoneNumberAreaEntityByCountryCodeAndCallNumber(
-                countryISO3166A2Code,
-                areaCallNumber);
-        return convertPhoneNumberAreaEntityToArea(pnAreaEntity);
+        return getActiveAreaByAreaId(getActiveAreaIdByCountryCodeAndCallNumber(countryISO3166A2Code, areaCallNumber));
+    }
+
+    private Long getActiveAreaIdByCountryCodeAndCallNumber(final String countryISO3166A2Code,
+            final String callNumber) {
+        CriteriaBuilder cb = em.getCriteriaBuilder();
+        CriteriaQuery<Long> criteriaQuery = cb.createQuery(Long.class);
+
+        Root<PhoneNumberAreaEntity> root =
+                criteriaQuery.from(PhoneNumberAreaEntity.class);
+
+        criteriaQuery.select(root.get(PhoneNumberAreaEntity_.phoneAreaId));
+
+        Predicate predicate = cb.equal(root.get(PhoneNumberAreaEntity_.callNumber),
+                callNumber);
+        Predicate and = cb.and(
+                predicate,
+                cb.equal(root.get(PhoneNumberAreaEntity_.phoneNumberCountry),
+                        em.getReference(PhoneNumberCountryEntity.class, countryISO3166A2Code)));
+
+        criteriaQuery.where(cb.and(and, cb.equal(root.get(PhoneNumberAreaEntity_.active), true)));
+        List<Long> resultList = em.createQuery(criteriaQuery).getResultList();
+        if (resultList.size() == 1) {
+            return resultList.get(0);
+        }
+        return null;
+    }
+
+    private List<Area> getActiveAreasByCountryCode(final String countryISO3166A2Code,
+            final Long startPosition, final Long maxResultCount) {
+        CriteriaBuilder cb = em.getCriteriaBuilder();
+        CriteriaQuery<Area> criteriaQuery = cb.createQuery(Area.class);
+        Root<PhoneNumberAreaEntity> root = criteriaQuery
+                .from(PhoneNumberAreaEntity.class);
+        Join<PhoneNumberAreaEntity, PhoneNumberCountryEntity> pnc = root
+                .join(PhoneNumberAreaEntity_.phoneNumberCountry);
+        criteriaQuery.multiselect(pnc.get(PhoneNumberCountryEntity_.countryISO3166A2Code),
+                root.get(PhoneNumberAreaEntity_.callNumber), root.get(PhoneNumberAreaEntity_.areaName),
+                root.get(PhoneNumberAreaEntity_.subscriberNumberLength), root.get(PhoneNumberAreaEntity_.active));
+        Predicate predicate = cb.equal(root.get(PhoneNumberAreaEntity_.phoneNumberCountry),
+                em.getReference(PhoneNumberCountryEntity.class, countryISO3166A2Code));
+        Predicate and = cb.and(
+                predicate,
+                cb.equal(root.get(PhoneNumberAreaEntity_.active), true));
+        criteriaQuery.where(and);
+        TypedQuery<Area> query = em.createQuery(criteriaQuery);
+        List<Area> resultList = new ArrayList<Area>();
+        if ((startPosition == null) && (maxResultCount == null)) {
+            resultList = query.getResultList();
+        } else if ((startPosition == null) && (maxResultCount >= 0L)) {
+            int maxResult = Integer.parseInt(Long.toString(maxResultCount));
+            resultList = query.setMaxResults(maxResult).getResultList();
+        } else if ((startPosition != null) && (startPosition >= 0L) && (maxResultCount == null)) {
+            int position = Integer.parseInt(Long.toString(startPosition));
+            resultList = query.setFirstResult(position).getResultList();
+        } else if ((startPosition != null) && (startPosition >= 0L) && (maxResultCount >= 0L)) {
+            int position = Integer.parseInt(Long.toString(startPosition));
+            int maxResult = Integer.parseInt(Long.toString(maxResultCount));
+            resultList = query.setFirstResult(position).setMaxResults(maxResult).getResultList();
+        } else {
+            resultList = new ArrayList<Area>();
+        }
+        return resultList;
     }
 
     @Override
     public Area getAreaById(final long areaId) {
-        return convertPhoneNumberAreaEntityToArea(findPhoneNumberAreaEntityByAreaId(areaId));
+        // return convertPhoneNumberAreaEntityToArea(findPhoneNumberAreaEntityByAreaId(areaId));
+        return getActiveAreaByAreaId(areaId);
     }
 
     @Override
     public CallablePhoneNumber getCallablePhoneNumber(final long phoneNumberId) {
-        return convertPhoneNumberEntityToCallablePhoneNumber(findPhoneNumberEntityByPhoneNumberId(phoneNumberId));
+        return getCallablePhoneNumberByPhoneNumberId(phoneNumberId);
+    }
+
+    private CallablePhoneNumber getCallablePhoneNumberByPhoneNumberId(final long phoneNumberId) {
+        CriteriaBuilder cb = em.getCriteriaBuilder();
+        CriteriaQuery<CallablePhoneNumber> criteriaQuery = cb.createQuery(CallablePhoneNumber.class);
+
+        Root<PhoneNumberEntity> root =
+                criteriaQuery.from(PhoneNumberEntity.class);
+        Join<PhoneNumberEntity, PhoneNumberAreaEntity> pna = root.join(PhoneNumberEntity_.phoneNumberArea);
+        Join<PhoneNumberAreaEntity, PhoneNumberCountryEntity> pnc = pna.join(PhoneNumberAreaEntity_.phoneNumberCountry);
+        criteriaQuery.multiselect(pnc.get(PhoneNumberCountryEntity_.iddPrefix),
+                pnc.get(PhoneNumberCountryEntity_.nddPrefix), pnc.get(PhoneNumberCountryEntity_.countryCallCode),
+                pna.get(PhoneNumberAreaEntity_.callNumber), root.get(PhoneNumberEntity_.subScriberNumber),
+                root.get(PhoneNumberEntity_.extension));
+
+        Predicate predicate = cb.equal(root.get(PhoneNumberEntity_.phoneNumberId), phoneNumberId);
+
+        criteriaQuery.where(predicate);
+        List<CallablePhoneNumber> resultList = em.createQuery(criteriaQuery).getResultList();
+        if (resultList.size() == 1) {
+            return resultList.get(0);
+        }
+        return null;
+    }
+
+    private List<Country> getCountriesByActive(final Long startPosition,
+            final Long maxResultCount) {
+        CriteriaBuilder cb = em.getCriteriaBuilder();
+        CriteriaQuery<Country> criteriaQuery = cb.createQuery(Country.class);
+        Root<PhoneNumberCountryEntity> root = criteriaQuery
+                .from(PhoneNumberCountryEntity.class);
+        criteriaQuery.multiselect(root.get(PhoneNumberCountryEntity_.countryISO3166A2Code),
+                root.get(PhoneNumberCountryEntity_.iddPrefix), root.get(PhoneNumberCountryEntity_.nddPrefix),
+                root.get(PhoneNumberCountryEntity_.countryCallCode), root.get(PhoneNumberCountryEntity_.active));
+        Predicate predicate = cb.equal(root.get(PhoneNumberCountryEntity_.active), true);
+        criteriaQuery.where(predicate);
+        TypedQuery<Country> query = em.createQuery(criteriaQuery);
+        List<Country> resultList = new ArrayList<Country>();
+        if ((startPosition == null) && (maxResultCount == null)) {
+            resultList = query.getResultList();
+        } else if ((startPosition == null) && (maxResultCount >= 0L)) {
+            int maxResult = Integer.parseInt(Long.toString(maxResultCount));
+            resultList = query.setMaxResults(maxResult).getResultList();
+        } else if ((startPosition != null) && (startPosition >= 0L) && (maxResultCount == null)) {
+            int position = Integer.parseInt(Long.toString(startPosition));
+            resultList = query.setFirstResult(position).getResultList();
+        } else if ((startPosition != null) && (startPosition >= 0L) && (maxResultCount >= 0L)) {
+            int position = Integer.parseInt(Long.toString(startPosition));
+            int maxResult = Integer.parseInt(Long.toString(maxResultCount));
+            resultList = query.setFirstResult(position).setMaxResults(maxResult).getResultList();
+        } else {
+            resultList = new ArrayList<Country>();
+        }
+        return resultList;
     }
 
     @Override
@@ -283,8 +265,47 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
         if ((countryISO3166A2Code == null)) {
             throw new IllegalArgumentException("The countryISO3166A2Code parameter is null.");
         }
-        PhoneNumberCountryEntity pnCountryEntity = findPhoneNumberCountryEntityByCountryISO3166A2Code(countryISO3166A2Code);
-        return convertPhoneNumberCountryEntityToCountry(pnCountryEntity);
+        return getCountryByCountryCode(countryISO3166A2Code);
+    }
+
+    private Country getCountryByCountryCode(final String countryISO3166A2Code) {
+        CriteriaBuilder cb = em.getCriteriaBuilder();
+        CriteriaQuery<Country> criteriaQuery = cb.createQuery(Country.class);
+
+        Root<PhoneNumberCountryEntity> root =
+                criteriaQuery.from(PhoneNumberCountryEntity.class);
+
+        criteriaQuery.multiselect(root.get(PhoneNumberCountryEntity_.countryISO3166A2Code),
+                root.get(PhoneNumberCountryEntity_.iddPrefix), root.get(PhoneNumberCountryEntity_.nddPrefix),
+                root.get(PhoneNumberCountryEntity_.countryCallCode), root.get(PhoneNumberCountryEntity_.active));
+
+        Predicate predicate = cb.equal(root.get(PhoneNumberCountryEntity_.countryISO3166A2Code), countryISO3166A2Code);
+
+        criteriaQuery.where(predicate);
+        List<Country> resultList = em.createQuery(criteriaQuery).getResultList();
+        if (resultList.size() == 1) {
+            return resultList.get(0);
+        }
+        return null;
+    }
+
+    private Integer getSubscriberNumberLengthByAreaId(final long areaId) {
+        CriteriaBuilder cb = em.getCriteriaBuilder();
+        CriteriaQuery<Integer> criteriaQuery = cb.createQuery(Integer.class);
+
+        Root<PhoneNumberAreaEntity> root =
+                criteriaQuery.from(PhoneNumberAreaEntity.class);
+
+        criteriaQuery.select(root.get(PhoneNumberAreaEntity_.subscriberNumberLength));
+
+        Predicate predicate = cb.equal(root.get(PhoneNumberAreaEntity_.phoneAreaId),
+                areaId);
+        criteriaQuery.where(cb.and(predicate, cb.equal(root.get(PhoneNumberAreaEntity_.active), true)));
+        List<Integer> resultList = em.createQuery(criteriaQuery).getResultList();
+        if (resultList.size() == 1) {
+            return resultList.get(0);
+        }
+        return null;
     }
 
     @Override
@@ -306,24 +327,12 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
         if (countryISO3166A2Code == null) {
             throw new IllegalArgumentException("The countryISO3166A2Code parameter is null.");
         }
-        List<Area> listAreaEntities = new ArrayList<Area>();
-        List<PhoneNumberAreaEntity> listPhoneNumberAreaEntities = findPhoneNumberAreaEntitiesByCountryCode(
-                countryISO3166A2Code, startPosition, maxResultCount);
-        for (PhoneNumberAreaEntity pnae : listPhoneNumberAreaEntities) {
-            listAreaEntities.add(convertPhoneNumberAreaEntityToArea(pnae));
-        }
-        return listAreaEntities;
+        return getActiveAreasByCountryCode(countryISO3166A2Code, startPosition, maxResultCount);
     }
 
     @Override
     public List<Country> listActiveCountries(final Long startPosition, final Long maxResultCount) {
-        List<Country> listCountryEntities = new ArrayList<Country>();
-        List<PhoneNumberCountryEntity> listPhoneNumberCountryEntities = findPhoneNumberCountryEntitiesByActive(
-                startPosition, maxResultCount);
-        for (PhoneNumberCountryEntity pnce : listPhoneNumberCountryEntities) {
-            listCountryEntities.add(convertPhoneNumberCountryEntityToCountry(pnce));
-        }
-        return listCountryEntities;
+        return getCountriesByActive(startPosition, maxResultCount);
     }
 
     @Override
@@ -331,15 +340,16 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
             final int subscriberNumberLength) {
         if ((countryISO3166A2Code == null) || (callNumber == null)) {
             throw new IllegalArgumentException("The countryISO3166A2Code or callNumber parameter is null.");
-        } else if (subscriberNumberLength < 1) {
-            throw new IllegalArgumentException("The subscriberNumberLength is zero or negative.");
-        } else {
-            PhoneNumberAreaEntity pnAeraEntity = findActivePhoneNumberAreaEntityByCountryCodeAndCallNumber(
-                    countryISO3166A2Code, callNumber);
-            if (pnAeraEntity != null) {
-                throw new DuplicateSelectableAreaException();
-            }
         }
+
+        if (subscriberNumberLength < 1) {
+            throw new NonPositiveSubscriberNumberLengthException();
+        }
+
+        if (existAreaByCountryCodeAndCallNumber(countryISO3166A2Code, callNumber)) {
+            throw new DuplicateSelectableAreaException();
+        }
+
         PhoneNumberAreaEntity entity = new PhoneNumberAreaEntity();
         entity.setPhoneNumberCountry(em.getReference(PhoneNumberCountryEntity.class, countryISO3166A2Code));
         entity.setCallNumber(callNumber);
@@ -356,12 +366,12 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
             final String countryCallCode) {
         if ((countryISO3166A2Code == null) || (idd == null) || (ndd == null) || (countryCallCode == null)) {
             throw new IllegalArgumentException("The countryISO3166A2Code, idd, ndd, countryCallCode parameter is null.");
-        } else {
-            PhoneNumberCountryEntity pnCountryEntity = findPhoneNumberCountryEntityByCountryISO3166A2Code(countryISO3166A2Code);
-            if (pnCountryEntity != null) {
-                throw new IllegalArgumentException("DUPLICATE COUNTRY.");
-            }
         }
+
+        if (existCountry(countryISO3166A2Code)) {
+            throw new DuplicateCountryException();
+        }
+
         PhoneNumberCountryEntity entity = new PhoneNumberCountryEntity();
         entity.setCountryISO3166A2Code(countryISO3166A2Code);
         entity.setIddPrefix(idd);
@@ -374,13 +384,17 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
 
     @Override
     public long savePhoneNumber(final long areaId, final String subscriberNumber, final String extension) {
-        PhoneNumberAreaEntity pnAreaEntity = findPhoneNumberAreaEntityByAreaId(areaId);
-        if (pnAreaEntity == null) {
-            throw new IllegalArgumentException("NOT EXIST AREA.");
-        } else {
-            if (subscriberNumber.length() != pnAreaEntity.getSubscriberNumberLength()) {
-                throw new InvalidNumberExcption();
-            }
+        Integer areaSubscriberNumberLength = getSubscriberNumberLengthByAreaId(areaId);
+        if (subscriberNumber == null) {
+            throw new IllegalArgumentException("The subscriberNumber parameter is null.");
+        }
+
+        if (areaSubscriberNumberLength == null) {
+            throw new NoSuchAreaException();
+        }
+
+        if (subscriberNumber.length() != areaSubscriberNumberLength) {
+            throw new InvalidNumberException();
         }
         PhoneNumberEntity entity = new PhoneNumberEntity();
         entity.setSubScriberNumber(subscriberNumber);
@@ -403,17 +417,18 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
         }
         PhoneNumberEntity pnEntity = findPhoneNumberEntityByPhoneNumberId(phoneNumberId);
         if (pnEntity == null) {
-            throw new IllegalArgumentException("NOT EXIST PHONE NUMBER");
-        } else {
-            PhoneNumberAreaEntity pnAreaEntity = findPhoneNumberAreaEntityByAreaId(areaId);
-            if (pnAreaEntity == null) {
-                throw new IllegalArgumentException("NOT EXIST AREA.");
-            } else {
-                if (pnAreaEntity.getSubscriberNumberLength() != subscriberNumber.length()) {
-                    throw new InvalidNumberExcption();
-                }
-            }
+            throw new NoSuchPhoneNumberException();
         }
+
+        Integer areaSubscriberNumberLength = getSubscriberNumberLengthByAreaId(areaId);
+        if (areaSubscriberNumberLength == null) {
+            throw new NoSuchAreaException();
+        }
+
+        if (areaSubscriberNumberLength != subscriberNumber.length()) {
+            throw new InvalidNumberException();
+        }
+
         pnEntity.setExtension(extension);
         pnEntity.setSubScriberNumber(subscriberNumber);
         pnEntity.setPhoneNumberArea(em.getReference(PhoneNumberAreaEntity.class, areaId));

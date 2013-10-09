@@ -49,6 +49,7 @@
                     <instructions>
                         <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
                         <Import-Package>
+                            org.everit.phonenumber.api.dto,
                             org.everit.phonenumber.api.enums,
                             org.everit.verifiabledata.api.enums,
                             org.everit.token.entity,

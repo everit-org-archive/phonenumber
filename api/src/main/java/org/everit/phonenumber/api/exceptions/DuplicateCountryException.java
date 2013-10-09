@@ -1,4 +1,4 @@
-package org.everit.phonenumber.api.expections;
+package org.everit.phonenumber.api.exceptions;
 
 /*
  * Copyright (c) 2011, Everit Kft.
@@ -21,17 +21,14 @@ package org.everit.phonenumber.api.expections;
  * MA 02110-1301  USA
  */
 
-public class DuplicateSelectableAreaException extends RuntimeException {
+public class DuplicateCountryException extends RuntimeException {
 
     /**
-     * The generated serial version UID.
+     * Generated serial version id.
      */
-    private static final long serialVersionUID = 7896934198922932708L;
+    private static final long serialVersionUID = -3772256083480850587L;
 
-    /**
-     * The simple constructor.
-     */
-    public DuplicateSelectableAreaException() {
-        super("Existing the area code which belong the country code.");
+    public DuplicateCountryException() {
+        super("Already exist country in the database.");
     }
 }

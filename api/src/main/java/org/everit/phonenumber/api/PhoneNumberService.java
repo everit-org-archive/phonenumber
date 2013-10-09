@@ -27,6 +27,10 @@ import org.everit.phonenumber.api.dto.Area;
 import org.everit.phonenumber.api.dto.CallablePhoneNumber;
 import org.everit.phonenumber.api.dto.Country;
 import org.everit.phonenumber.api.enums.VerificationType;
+import org.everit.phonenumber.api.exceptions.DuplicateCountryException;
+import org.everit.phonenumber.api.exceptions.NoSuchAreaException;
+import org.everit.phonenumber.api.exceptions.NoSuchPhoneNumberException;
+import org.everit.phonenumber.api.exceptions.NonPositiveSubscriberNumberLengthException;
 
 /*
  * Copyright (c) 2011, Everit Kft.
@@ -72,8 +76,9 @@ public interface PhoneNumberService {
      * @param areaCallNumber
      *            the area call number. Cannot be <code>null</code>.
      * @return the {@link Area} object if exist, otherwise <code>null</code>.
+     * 
      * @throws IllegalArgumentException
-     *             if one parameter is <code>null</code>.
+     *             if countryISO3166A2Code or areaCallNumber parameter is <code>null</code>.
      */
     Area getActiveAreaByCountryAndCallNumber(final String countryISO3166A2Code, final String areaCallNumber);
 
@@ -82,7 +87,7 @@ public interface PhoneNumberService {
      * 
      * @param areaId
      *            the id of the area.
-     * @return the {@link Area} object if exist the area. If not exitst return <code>null</code>.
+     * @return the {@link Area} object if exist the area. If not exits return <code>null</code>.
      */
     Area getAreaById(final long areaId);
 
@@ -102,6 +107,7 @@ public interface PhoneNumberService {
      *            the countryISO3166A2Code. Cannot be <code>null</code>.
      * @return the {@link Country} object if exist in the database. If not exist in the database return
      *         <code>null</code>.
+     * 
      * @throws IllegalArgumentException
      *             if the countryISO3166A2Code is null.
      */
@@ -127,12 +133,15 @@ public interface PhoneNumberService {
      * Listing active areas based on the countryISO3166A2Code.
      * 
      * @param countryISO3166A2Code
-     *            the country code.
+     *            the country code. Cannot be null.
      * @param startPosition
      *            the first index of the list or null if not defined.
      * @param maxResultCount
      *            the maximum number of elements or null if not defined.
      * @return the {@link Area}s in list. If no one return empty list.
+     * 
+     * @throws IllegalArgumentException
+     *             if country code parameter is null.
      */
     List<Area> listActiveAreasBycountryISO3166A2Code(final String countryISO3166A2Code, final Long startPosition,
             final Long maxResultCount);
@@ -160,7 +169,13 @@ public interface PhoneNumberService {
      * @param subscriberNumberLength
      *            the expected length of the phone number in the local (country) area code. Must be positive.
      * @return the id of the area.
+     * 
+     * @throws IllegalArgumentException
+     *             if the countryISO3166A2Code or callNumber parameter is null.
+     * @throws NonPositiveSubscriberNumberLengthException
+     *             if the subscriber number length is not positive.
      * @throws DuplicateSelectableAreaException
+     *             if exist selectable area.
      */
     long saveArea(final String countryISO3166A2Code, final String callNumber, final String name,
             final int subscriberNumberLength);
@@ -176,8 +191,11 @@ public interface PhoneNumberService {
      *            the NDD code of the country. Cannot be <code>null</code>.
      * @param countryCallCode
      *            the country call code. Cannot be <code>null</code>.
+     * 
+     * @throws DuplicateCountryException
+     *             if already exist the country.
      * @throws IllegalArgumentException
-     *             if one parameter is <code>null</code>.
+     *             if countryISO3166A2Code, idd, ndd or countryCallCode parameter is <code>null</code>.
      */
     void saveCountry(final String countryISO3166A2Code, final String idd, final String ndd, final String countryCallCode);
 
@@ -185,13 +203,18 @@ public interface PhoneNumberService {
      * Saving the phone number in the database.
      * 
      * @param areaId
-     *            the id of the area.
+     *            the id of the area. Must be exist area.
      * @param subscriberNumber
-     *            the number of subscriber.
+     *            the number of subscriber. Cannot be <code>null</code>.
      * @param extension
      *            the extension number.
      * @return the id of the phone number.
-     * @throws InvalidNumberExcption
+     * 
+     * @throws IllegalArgumentException
+     *             if the subscriber number parameter is <code>null</code>.
+     * @throws NoSuchAreaException
+     *             if not exist area.
+     * @throws InvalidNumberException
      *             if the number length is not correct.
      */
     long savePhoneNumber(final long areaId, final String subscriberNumber, final String extension);
@@ -201,15 +224,22 @@ public interface PhoneNumberService {
      * be invalid.
      * 
      * @param phoneNumberId
-     *            the id of the phone number.
+     *            the id of the phone number. Must be exist the phone number.
      * @param areaId
-     *            the id of the area.
+     *            the id of the area. Must be exist the area.
      * @param subscriberNumber
      *            the number of the subscribers. Cannot be <code>null</code>.
      * @param extension
      *            the extension number.
-     * @throws InvalidNumberExcption
-     *             if the number length is not correct.
+     * 
+     * @throws IllegalArgumentException
+     *             if the subscriber number is <code>null</code>.
+     * @throws NoSuchPhoneNumberException
+     *             if not exist phone number.
+     * @throws NoSuchAreaException
+     *             if not exist area.
+     * @throws InvalidNumberException
+     *             if the subscriber number length is not correct.
      */
     void updatePhoneNumber(final long phoneNumberId, final long areaId, final String subscriberNumber,
             final String extension);

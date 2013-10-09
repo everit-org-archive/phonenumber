@@ -33,8 +33,12 @@ import org.everit.phonenumber.api.PhoneNumberService;
 import org.everit.phonenumber.api.dto.Area;
 import org.everit.phonenumber.api.dto.CallablePhoneNumber;
 import org.everit.phonenumber.api.dto.Country;
-import org.everit.phonenumber.api.expections.DuplicateSelectableAreaException;
-import org.everit.phonenumber.api.expections.InvalidNumberExcption;
+import org.everit.phonenumber.api.exceptions.DuplicateCountryException;
+import org.everit.phonenumber.api.exceptions.DuplicateSelectableAreaException;
+import org.everit.phonenumber.api.exceptions.InvalidNumberException;
+import org.everit.phonenumber.api.exceptions.NoSuchAreaException;
+import org.everit.phonenumber.api.exceptions.NoSuchPhoneNumberException;
+import org.everit.phonenumber.api.exceptions.NonPositiveSubscriberNumberLengthException;
 
 public class PhoneNumberServiceTestImpl implements PhoneNumberServiceTest {
 
@@ -103,7 +107,7 @@ public class PhoneNumberServiceTestImpl implements PhoneNumberServiceTest {
         try {
             phoneNumberService.saveArea(a.getCountryCode(), a.getCallNumber(), a.getName(),
                     a.getSubscriberNumberLength());
-            Assert.assertFalse(true);
+            Assert.fail("Expect DuplicateSelectableAreaException, but the method not throws.");
         } catch (DuplicateSelectableAreaException e) {
             Assert.assertNotNull(e);
         }
@@ -111,7 +115,7 @@ public class PhoneNumberServiceTestImpl implements PhoneNumberServiceTest {
         try {
             phoneNumberService.saveArea(null, a.getCallNumber(), a.getName(),
                     a.getSubscriberNumberLength());
-            Assert.assertFalse(true);
+            Assert.fail("Expect IllegalArgumentException, but the method not throws.");
         } catch (IllegalArgumentException e) {
             Assert.assertNotNull(e);
         }
@@ -119,7 +123,7 @@ public class PhoneNumberServiceTestImpl implements PhoneNumberServiceTest {
         try {
             phoneNumberService.saveArea(a.getCountryCode(), a.getCallNumber(), null,
                     a.getSubscriberNumberLength());
-            Assert.assertFalse(true);
+            Assert.fail("Expect DuplicateSelectableAreaException, but the method not throws.");
         } catch (DuplicateSelectableAreaException e) {
             Assert.assertNotNull(e);
         }
@@ -127,7 +131,7 @@ public class PhoneNumberServiceTestImpl implements PhoneNumberServiceTest {
         try {
             phoneNumberService.saveArea(a.getCountryCode(), null, a.getName(),
                     a.getSubscriberNumberLength());
-            Assert.assertFalse(true);
+            Assert.fail("Expect IllegalArgumentException, but the method not throws.");
         } catch (IllegalArgumentException e) {
             Assert.assertNotNull(e);
         }
@@ -135,21 +139,21 @@ public class PhoneNumberServiceTestImpl implements PhoneNumberServiceTest {
         try {
             phoneNumberService.saveArea(a.getCountryCode(), a.getCallNumber(), a.getName(),
                     0);
-            Assert.assertFalse(true);
-        } catch (IllegalArgumentException e) {
+            Assert.fail("Expect NonPositiveSubscriberNumberLengthException, but the method not throws.");
+        } catch (NonPositiveSubscriberNumberLengthException e) {
             Assert.assertNotNull(e);
         }
 
         try {
             phoneNumberService.getActiveAreaByCountryAndCallNumber(null, a.getCallNumber());
-            Assert.assertFalse(true);
+            Assert.fail("Expect IllegalArgumentException, but the method not throws.");
         } catch (IllegalArgumentException e) {
             Assert.assertNotNull(e);
         }
 
         try {
             phoneNumberService.getActiveAreaByCountryAndCallNumber(a.getCountryCode(), null);
-            Assert.assertFalse(true);
+            Assert.fail("Expect IllegalArgumentException, but the method not throws.");
         } catch (IllegalArgumentException e) {
             Assert.assertNotNull(e);
         }
@@ -167,7 +171,7 @@ public class PhoneNumberServiceTestImpl implements PhoneNumberServiceTest {
         int areaHUCount = 0;
         for (Area area : areaList) {
             if (!area.getCountryCode().equals("HU")) {
-                Assert.assertFalse(true);
+                Assert.fail("Not exist \"HU\" country code, but expect.");
             } else {
                 areaHUCount++;
                 Assert.assertTrue(true);
@@ -223,7 +227,7 @@ public class PhoneNumberServiceTestImpl implements PhoneNumberServiceTest {
 
         try {
             phoneNumberService.listActiveAreasBycountryISO3166A2Code(null, null, null);
-            Assert.assertFalse(true);
+            Assert.fail("Expect IllegalArgumentException, but the method not throws.");
         } catch (IllegalArgumentException e) {
             Assert.assertNotNull(e);
         }
@@ -241,15 +245,15 @@ public class PhoneNumberServiceTestImpl implements PhoneNumberServiceTest {
         try {
             phoneNumberService.saveCountry(c.getCountryISO3166A2Code(), c.getIddPrefix(), c.getNddPrefix(),
                     c.getCountryCallCode());
-            Assert.assertFalse(true);
-        } catch (IllegalArgumentException e) {
+            Assert.fail("Expect DuplicateCountryException, but the method not throws.");
+        } catch (DuplicateCountryException e) {
             Assert.assertNotNull(e);
         }
 
         try {
             phoneNumberService.saveCountry("asdfasdfasdfasdf", c.getIddPrefix(), c.getNddPrefix(),
                     c.getCountryCallCode());
-            Assert.assertFalse(true);
+            Assert.fail("Expect PersistenceException, but the method not throws.");
         } catch (PersistenceException e) {
             Assert.assertNotNull(e);
         }
@@ -257,7 +261,7 @@ public class PhoneNumberServiceTestImpl implements PhoneNumberServiceTest {
         try {
             phoneNumberService.saveCountry(null, c.getIddPrefix(), c.getNddPrefix(),
                     c.getCountryCallCode());
-            Assert.assertFalse(true);
+            Assert.fail("Expect IllegalArgumentException, but the method not throws.");
         } catch (IllegalArgumentException e) {
             Assert.assertNotNull(e);
         }
@@ -265,7 +269,7 @@ public class PhoneNumberServiceTestImpl implements PhoneNumberServiceTest {
         try {
             phoneNumberService.saveCountry(c.getCountryISO3166A2Code(), null, c.getNddPrefix(),
                     c.getCountryCallCode());
-            Assert.assertFalse(true);
+            Assert.fail("Expect IllegalArgumentException, but the method not throws.");
         } catch (IllegalArgumentException e) {
             Assert.assertNotNull(e);
         }
@@ -273,7 +277,7 @@ public class PhoneNumberServiceTestImpl implements PhoneNumberServiceTest {
         try {
             phoneNumberService.saveCountry(c.getCountryISO3166A2Code(), c.getIddPrefix(), null,
                     c.getCountryCallCode());
-            Assert.assertFalse(true);
+            Assert.fail("Expect IllegalArgumentException, but the method not throws.");
         } catch (IllegalArgumentException e) {
             Assert.assertNotNull(e);
         }
@@ -281,14 +285,14 @@ public class PhoneNumberServiceTestImpl implements PhoneNumberServiceTest {
         try {
             phoneNumberService.saveCountry(c.getCountryISO3166A2Code(), c.getIddPrefix(), c.getNddPrefix(),
                     null);
-            Assert.assertFalse(true);
+            Assert.fail("Expect IllegalArgumentException, but the method not throws.");
         } catch (IllegalArgumentException e) {
             Assert.assertNotNull(e);
         }
 
         try {
             phoneNumberService.getCountry(null);
-            Assert.assertFalse(true);
+            Assert.fail("Expect IllegalArgumentException, but the method not throws.");
         } catch (IllegalArgumentException e) {
             Assert.assertNotNull(e);
         }
@@ -367,43 +371,50 @@ public class PhoneNumberServiceTestImpl implements PhoneNumberServiceTest {
         }
         try {
             phoneNumberService.savePhoneNumber(0L, phoneNumbers.get(0), null);
-            Assert.assertFalse(true);
+            Assert.fail("Expect NoSuchAreaException, but the method not throws.");
+        } catch (NoSuchAreaException e) {
+            Assert.assertNotNull(e);
+        }
+
+        try {
+            phoneNumberService.savePhoneNumber(1L, null, "");
+            Assert.fail("Expect IllegalArgumentException, but the method not throws.");
         } catch (IllegalArgumentException e) {
             Assert.assertNotNull(e);
         }
 
         try {
             phoneNumberService.savePhoneNumber(1L, "", null);
-            Assert.assertFalse(true);
-        } catch (InvalidNumberExcption e) {
+            Assert.fail("Expect InvalidNumberException, but the method not throws.");
+        } catch (InvalidNumberException e) {
             Assert.assertNotNull(e);
         }
 
         try {
             phoneNumberService.updatePhoneNumber(0L, 1L, "", "");
-            Assert.assertFalse(true);
-        } catch (IllegalArgumentException e) {
+            Assert.fail("Expect NoSuchPhoneNumberException, but the method not throws.");
+        } catch (NoSuchPhoneNumberException e) {
             Assert.assertNotNull(e);
         }
 
         try {
             phoneNumberService.updatePhoneNumber(1L, 1L, null, "");
-            Assert.assertFalse(true);
+            Assert.fail("Expect IllegalArgumentException, but the method not throws.");
         } catch (IllegalArgumentException e) {
             Assert.assertNotNull(e);
         }
 
         try {
             phoneNumberService.updatePhoneNumber(1L, 0L, "", "");
-            Assert.assertFalse(true);
-        } catch (IllegalArgumentException e) {
+            Assert.fail("Expect NoSuchAreaException, but the method not throws.");
+        } catch (NoSuchAreaException e) {
             Assert.assertNotNull(e);
         }
 
         try {
             phoneNumberService.updatePhoneNumber(1L, 1L, "", "");
-            Assert.assertFalse(true);
-        } catch (InvalidNumberExcption e) {
+            Assert.fail("Expect InvalidNumberException, but the method not throws.");
+        } catch (InvalidNumberException e) {
             Assert.assertNotNull(e);
         }
     }

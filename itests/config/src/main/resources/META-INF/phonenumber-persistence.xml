@@ -35,7 +35,8 @@
         <class>org.everit.phonenumber.entity.PhoneNumberAreaEntity</class>
         <class>org.everit.phonenumber.entity.PhoneNumberCountryEntity</class>
         <class>org.everit.phonenumber.entity.PhoneNumberEntity</class>
-        <class>org.everit.phonenumber.entity.PhoneNumberVerificationEntity</class>
+        <class>org.everit.phonenumber.entity.PhoneNumberVerificationRequestEntity</class>
+        <class>org.everit.phonenumber.entity.PhoneNumberVerifiablePhoneEntity</class>
 
         <exclude-unlisted-classes>true</exclude-unlisted-classes>
 
