@@ -21,6 +21,9 @@ package org.everit.phonenumber.api.exceptions;
  * MA 02110-1301  USA
  */
 
+/**
+ * NonPositiveSubscriberNumberLengthException is throw when the subscriber number length is not positive.
+ */
 public class NonPositiveSubscriberNumberLengthException extends RuntimeException {
 
     /**
@@ -28,7 +31,10 @@ public class NonPositiveSubscriberNumberLengthException extends RuntimeException
      */
     private static final long serialVersionUID = -3478524020881270052L;
 
+    /**
+     * The default constructor with "The subscriber number length is not positive." error message.
+     */
     public NonPositiveSubscriberNumberLengthException() {
-        super("The subcriber number length is not positive.");
+        super("The subscriber number length is not positive.");
     }
 }

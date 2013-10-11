@@ -21,6 +21,9 @@ package org.everit.phonenumber.api.exceptions;
  * MA 02110-1301  USA
  */
 
+/**
+ * NoSuchPhoneNumberException is throw when the phone number is not exist in the database.
+ */
 public class NoSuchPhoneNumberException extends RuntimeException {
 
     /**
@@ -28,6 +31,9 @@ public class NoSuchPhoneNumberException extends RuntimeException {
      */
     private static final long serialVersionUID = -4236668693854408119L;
 
+    /**
+     * The default constructor with "Not exist the phone number." error message.
+     */
     public NoSuchPhoneNumberException() {
         super("Not exist the phone number.");
     }

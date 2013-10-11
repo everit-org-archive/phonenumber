@@ -24,7 +24,7 @@ package org.everit.phonenumber.api.enums;
 /**
  * Enumeration of verification type.
  */
-public enum VerificationType {
+public enum VerificationChannel {
 
     /**
      * The SMS verification type.

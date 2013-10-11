@@ -21,14 +21,21 @@ package org.everit.phonenumber.api.exceptions;
  * MA 02110-1301  USA
  */
 
-public class InvalidNumberException extends RuntimeException {
+/**
+ * InvalidPhoneNumberException is throw when the phone number invalid.
+ */
+public class InvalidPhoneNumberException extends RuntimeException {
 
     /**
      * Generated serial version UID.
      */
     private static final long serialVersionUID = -4744519270092645764L;
 
-    public InvalidNumberException() {
+    /**
+     * The default constructor with "The phone number is invalid, because the number length not matching the
+     * subscriberNumberLength." error message.
+     */
+    public InvalidPhoneNumberException() {
         super("The phone number is invalid, because the number length not matching the subscriberNumberLength.");
     }
 }

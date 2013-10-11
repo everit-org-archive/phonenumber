@@ -21,9 +21,10 @@ package org.everit.phonenumber.core;
  * MA 02110-1301  USA
  */
 
-import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.persistence.EntityManager;
 import javax.persistence.TypedQuery;
@@ -38,9 +39,11 @@ import org.everit.phonenumber.api.PhoneVerificationResult;
 import org.everit.phonenumber.api.dto.Area;
 import org.everit.phonenumber.api.dto.CallablePhoneNumber;
 import org.everit.phonenumber.api.dto.Country;
+import org.everit.phonenumber.api.enums.PhoneNumberConfirmationResult;
+import org.everit.phonenumber.api.enums.VerificationChannel;
 import org.everit.phonenumber.api.exceptions.DuplicateCountryException;
 import org.everit.phonenumber.api.exceptions.DuplicateSelectableAreaException;
-import org.everit.phonenumber.api.exceptions.InvalidNumberException;
+import org.everit.phonenumber.api.exceptions.InvalidPhoneNumberException;
 import org.everit.phonenumber.api.exceptions.NoSuchAreaException;
 import org.everit.phonenumber.api.exceptions.NoSuchPhoneNumberException;
 import org.everit.phonenumber.api.exceptions.NonPositiveSubscriberNumberLengthException;
@@ -52,7 +55,22 @@ import org.everit.phonenumber.entity.PhoneNumberEntity;
 import org.everit.phonenumber.entity.PhoneNumberEntity_;
 import org.everit.phonenumber.entity.PhoneNumberVerifiablePhoneEntity;
 import org.everit.phonenumber.entity.PhoneNumberVerifiablePhoneEntity_;
+import org.everit.phonenumber.entity.PhoneNumberVerificationRequestEntity;
+import org.everit.smssender.api.MessageFormat;
+import org.everit.smssender.api.SMSSender;
+import org.everit.util.core.velocity.VelocityUtil;
+import org.everit.verifiabledata.api.VerifyService;
+import org.everit.verifiabledata.api.dto.VerifiableDataCreation;
+import org.everit.verifiabledata.api.dto.VerificationResult;
+import org.everit.verifiabledata.api.enums.TokenUsageResult;
 import org.everit.verifiabledata.api.enums.VerificationLengthBase;
+import org.everit.verifiabledata.api.exceptions.NoSuchVerifiableDataException;
+import org.everit.verifiabledata.api.exceptions.NoSuchVerificationRequestException;
+import org.everit.verifiabledata.api.exceptions.NonPositiveVerificationLength;
+import org.everit.verifiabledata.entity.VerifiableDataEntity;
+import org.everit.verifiabledata.entity.VerifiableDataEntity_;
+import org.everit.verifiabledata.entity.VerificationRequestEntity;
+import org.everit.verifiabledata.entity.VerificationRequestEntity_;
 
 /**
  * Implementation of the {@link PhoneNumberService}.
@@ -60,19 +78,111 @@ import org.everit.verifiabledata.api.enums.VerificationLengthBase;
 public class PhoneNumberServiceImpl implements PhoneNumberService {
 
     /**
+     * Setting the firstResult and maxResult attribute the query.
+     * 
+     * @param query
+     *            the query what to setting.
+     * @param startPosition
+     *            the first index of the list or null if not defined.
+     * @param maxResultCount
+     *            the maximum number of elements or null if not defined.
+     */
+    private static void applyRangeToQuery(final TypedQuery<?> query, final Long startPosition,
+            final Long maxResultCount) {
+        if (startPosition != null) {
+            query.setFirstResult(startPosition.intValue());
+        }
+
+        if (maxResultCount != null) {
+            query.setMaxResults(maxResultCount.intValue());
+        }
+    }
+
+    /**
      * EntityManager set by blueprint.
      */
     private EntityManager em;
+
+    /**
+     * The {@link VerifyService} instance.
+     */
+    private VerifyService verifyService;
+
+    /**
+     * The {@link SMSSender} instance.
+     */
+    private SMSSender smsSender;
 
     @Override
     public void createVerificationRequestViaSMS(final long phoneNumberId, final String messagetemplate,
             final Date tokenValidityEndDate,
             final long verificationLength, final VerificationLengthBase verificationLengthBase) {
-        // TODO Auto-generated method stub
+        if ((messagetemplate == null) || (tokenValidityEndDate == null) || (verificationLengthBase == null)) {
+            throw new IllegalArgumentException("The messagetemplate or tokenValidityEndData or"
+                    + " verificationLengthBase is null. Cannot be null.");
+        }
+
+        if (!existPhoneNumber(phoneNumberId)) {
+            throw new NoSuchPhoneNumberException();
+        }
+
+        if (verificationLength <= 0.0) {
+            throw new NonPositiveVerificationLength();
+        }
+
+        VerifiableDataCreation verifiableDataCreation = verifyService.createVerifiableData(tokenValidityEndDate,
+                verificationLength, verificationLengthBase);
+        if (verifiableDataCreation != null) {
+            saveVerifiablePhone(phoneNumberId, verifiableDataCreation.getVerifiableDataId(),
+                    verifiableDataCreation.getVerificationRequest().getVerificationRequestId(),
+                    VerificationChannel.SMS);
+
+            em.flush();
+            Map<String, Object> variables = new HashMap<String, Object>();
+            variables.put("acceptToken", verifiableDataCreation.getVerificationRequest().getVerifyTokenUUID());
+            variables.put("rejectToken", verifiableDataCreation.getVerificationRequest().getRejectTokenUUID());
+            String messageBody = VelocityUtil.processVelocityTemplateFromString(messagetemplate, "ERROR",
+                    variables);
+
+            CallablePhoneNumber callablePhoneNumber = getCallablePhoneNumberByPhoneNumberId(phoneNumberId);
+
+            smsSender.sendMessage(callablePhoneNumber.getCountryCallCode(), callablePhoneNumber.getAreaCallNumber(),
+                    callablePhoneNumber.getSubscriberNumber(), callablePhoneNumber.getExtension(), messageBody,
+                    MessageFormat.UNICODE, true);
+        }
 
     }
 
-    private boolean existAreaByCountryCodeAndCallNumber(final String countryISO3166A2Code,
+    /**
+     * /** Determine the phone number confirmation result.
+     * 
+     * @param tokenUsageResult
+     *            the {@link TokenUsageResult} object.
+     * @return the {@link PhoneNumberConfirmationResult} object.
+     */
+    private PhoneNumberConfirmationResult determinePhoneNumberConfirmationResult(
+            final TokenUsageResult tokenUsageResult) {
+        PhoneNumberConfirmationResult result = null;
+        if (tokenUsageResult.equals(TokenUsageResult.VERIFIED)) {
+            result = PhoneNumberConfirmationResult.SUCCESS;
+        } else if (tokenUsageResult.equals(TokenUsageResult.REJECTED)) {
+            result = PhoneNumberConfirmationResult.REJECTED;
+        } else {
+            result = PhoneNumberConfirmationResult.FAILED;
+        }
+        return result;
+    }
+
+    /**
+     * Checks the exist the area based on country code (ISO3166-alpha-2) and call number.
+     * 
+     * @param countryISO3166A2Code
+     *            the country code (ISO3166-alpha-2).
+     * @param callNumber
+     *            the area call number.
+     * @return <code>true</code> if exist area, otherwise return <code>false</code>.
+     */
+    private boolean existActiveAreaByCountryCodeAndCallNumber(final String countryISO3166A2Code,
             final String callNumber) {
         Long areaId = getActiveAreaIdByCountryCodeAndCallNumber(countryISO3166A2Code, callNumber);
         if (areaId != null) {
@@ -81,6 +191,13 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
         return false;
     }
 
+    /**
+     * Checks the country exist or not.
+     * 
+     * @param countryISO3166A2Code
+     *            the country code (ISO3166-alpha-2).
+     * @return <code>true</code> if exist country, otherwise return <code>false</code>.
+     */
     private boolean existCountry(final String countryISO3166A2Code) {
         CriteriaBuilder cb = em.getCriteriaBuilder();
         CriteriaQuery<String> criteriaQuery = cb.createQuery(String.class);
@@ -101,6 +218,85 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
     }
 
     /**
+     * Checks the phone number exist or not.
+     * 
+     * @param phoneNumberId
+     *            the id of the phone number record.
+     * @return <code>true</code> if exist phone number, otherwise return <code>false</code>.
+     */
+    private boolean existPhoneNumber(final long phoneNumberId) {
+        CriteriaBuilder cb = em.getCriteriaBuilder();
+        CriteriaQuery<Long> criteriaQuery = cb.createQuery(Long.class);
+
+        Root<PhoneNumberEntity> root =
+                criteriaQuery.from(PhoneNumberEntity.class);
+
+        criteriaQuery.select(root.get(PhoneNumberEntity_.phoneNumberId));
+
+        Predicate predicate = cb.equal(root.get(PhoneNumberEntity_.phoneNumberId), phoneNumberId);
+
+        criteriaQuery.where(predicate);
+        List<Long> resultList = em.createQuery(criteriaQuery).getResultList();
+        if (resultList.size() == 1) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Checks the verifiable data is exist or not.
+     * 
+     * @param verifiableDataId
+     *            the id of the verifiable data.
+     * @return <code>true</code> if exist verifiable data, otherwise return <code>false</code>.
+     */
+    private boolean existVerifiableData(final long verifiableDataId) {
+        CriteriaBuilder cb = em.getCriteriaBuilder();
+        CriteriaQuery<Long> criteriaQuery = cb.createQuery(Long.class);
+
+        Root<VerifiableDataEntity> root =
+                criteriaQuery.from(VerifiableDataEntity.class);
+
+        criteriaQuery.select(root.get(VerifiableDataEntity_.verifiableDataId));
+
+        Predicate predicate = cb.equal(root.get(VerifiableDataEntity_.verifiableDataId), verifiableDataId);
+
+        criteriaQuery.where(predicate);
+        List<Long> resultList = em.createQuery(criteriaQuery).getResultList();
+        if (resultList.size() == 1) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Checks the verification request exist or not.
+     * 
+     * @param verificationRequestId
+     *            the id of the verification request.
+     * @return <code>true</code> if exist verification request, otherwise return <code>false</code>.
+     */
+    private boolean existVerificationRequest(final long verificationRequestId) {
+        CriteriaBuilder cb = em.getCriteriaBuilder();
+        CriteriaQuery<Long> criteriaQuery = cb.createQuery(Long.class);
+
+        Root<VerificationRequestEntity> root =
+                criteriaQuery.from(VerificationRequestEntity.class);
+
+        criteriaQuery.select(root.get(VerificationRequestEntity_.verificationRequestId));
+
+        Predicate predicate = cb.equal(root.get(VerificationRequestEntity_.verificationRequestId),
+                verificationRequestId);
+
+        criteriaQuery.where(predicate);
+        List<Long> resultList = em.createQuery(criteriaQuery).getResultList();
+        if (resultList.size() == 1) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * Finds the {@link PhoneNumberEntity} based on phone number id.
      * 
      * @param phoneNumberId
@@ -111,6 +307,13 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
         return em.find(PhoneNumberEntity.class, phoneNumberId);
     }
 
+    /**
+     * Get the active area based on area id.
+     * 
+     * @param areaId
+     *            the id of the area.
+     * @return the Area object if exist, otherwise return <code>null</code>.
+     */
     private Area getActiveAreaByAreaId(final long areaId) {
         CriteriaBuilder cb = em.getCriteriaBuilder();
         CriteriaQuery<Area> criteriaQuery = cb.createQuery(Area.class);
@@ -140,6 +343,15 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
         return getActiveAreaByAreaId(getActiveAreaIdByCountryCodeAndCallNumber(countryISO3166A2Code, areaCallNumber));
     }
 
+    /**
+     * Get the active area id based on country code (ISO3166-alpha-2) and area call code.
+     * 
+     * @param countryISO3166A2Code
+     *            the country code (ISO3166-alpha-2).
+     * @param callNumber
+     *            the area call code.
+     * @return the active area id if exist, otherwise return <code>null</code>.
+     */
     private Long getActiveAreaIdByCountryCodeAndCallNumber(final String countryISO3166A2Code,
             final String callNumber) {
         CriteriaBuilder cb = em.getCriteriaBuilder();
@@ -165,6 +377,17 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
         return null;
     }
 
+    /**
+     * Get active areas based on country code (ISO3166-alpha-2).
+     * 
+     * @param countryISO3166A2Code
+     *            the country code (ISO3166-alpha-2).
+     * @param startPosition
+     *            the first index of the list or null if not defined.
+     * @param maxResultCount
+     *            the maximum number of elements or null if not defined.
+     * @return the active Areas in list. If no one return empty list.
+     */
     private List<Area> getActiveAreasByCountryCode(final String countryISO3166A2Code,
             final Long startPosition, final Long maxResultCount) {
         CriteriaBuilder cb = em.getCriteriaBuilder();
@@ -183,28 +406,13 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
                 cb.equal(root.get(PhoneNumberAreaEntity_.active), true));
         criteriaQuery.where(and);
         TypedQuery<Area> query = em.createQuery(criteriaQuery);
-        List<Area> resultList = new ArrayList<Area>();
-        if ((startPosition == null) && (maxResultCount == null)) {
-            resultList = query.getResultList();
-        } else if ((startPosition == null) && (maxResultCount >= 0L)) {
-            int maxResult = Integer.parseInt(Long.toString(maxResultCount));
-            resultList = query.setMaxResults(maxResult).getResultList();
-        } else if ((startPosition != null) && (startPosition >= 0L) && (maxResultCount == null)) {
-            int position = Integer.parseInt(Long.toString(startPosition));
-            resultList = query.setFirstResult(position).getResultList();
-        } else if ((startPosition != null) && (startPosition >= 0L) && (maxResultCount >= 0L)) {
-            int position = Integer.parseInt(Long.toString(startPosition));
-            int maxResult = Integer.parseInt(Long.toString(maxResultCount));
-            resultList = query.setFirstResult(position).setMaxResults(maxResult).getResultList();
-        } else {
-            resultList = new ArrayList<Area>();
-        }
+        PhoneNumberServiceImpl.applyRangeToQuery(query, startPosition, maxResultCount);
+        List<Area> resultList = query.getResultList();
         return resultList;
     }
 
     @Override
     public Area getAreaById(final long areaId) {
-        // return convertPhoneNumberAreaEntityToArea(findPhoneNumberAreaEntityByAreaId(areaId));
         return getActiveAreaByAreaId(areaId);
     }
 
@@ -213,6 +421,13 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
         return getCallablePhoneNumberByPhoneNumberId(phoneNumberId);
     }
 
+    /**
+     * Get the callable phone number based on phone number id.
+     * 
+     * @param phoneNumberId
+     *            the id of the phone number
+     * @return the CallablePhoneNumber object if exist, otherwise return <code>null</code>.
+     */
     private CallablePhoneNumber getCallablePhoneNumberByPhoneNumberId(final long phoneNumberId) {
         CriteriaBuilder cb = em.getCriteriaBuilder();
         CriteriaQuery<CallablePhoneNumber> criteriaQuery = cb.createQuery(CallablePhoneNumber.class);
@@ -241,7 +456,13 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
         return getCallablePhoneNumberByVerifiablePhoneId(verifiablePhoneId);
     }
 
-    // TODO testing getCallablePhoneNumberByVerifiablePhoneId
+    /**
+     * Get the callable phone number based on the verifiable phone id.
+     * 
+     * @param verifiablePhoneId
+     *            the id of the verifiable phone.
+     * @return the CallablePhoneNumber object if exist, otherwise return <code>null</code>.
+     */
     private CallablePhoneNumber getCallablePhoneNumberByVerifiablePhoneId(final long verifiablePhoneId) {
         CriteriaBuilder cb = em.getCriteriaBuilder();
         CriteriaQuery<CallablePhoneNumber> criteriaQuery = cb.createQuery(CallablePhoneNumber.class);
@@ -269,6 +490,15 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
         return null;
     }
 
+    /**
+     * Get the active countries.
+     * 
+     * @param startPosition
+     *            the first index of the list or null if not defined.
+     * @param maxResultCount
+     *            the maximum number of elements or null if not defined.
+     * @return the active Countries in list. If no one return empty list.
+     */
     private List<Country> getCountriesByActive(final Long startPosition,
             final Long maxResultCount) {
         CriteriaBuilder cb = em.getCriteriaBuilder();
@@ -281,22 +511,8 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
         Predicate predicate = cb.equal(root.get(PhoneNumberCountryEntity_.active), true);
         criteriaQuery.where(predicate);
         TypedQuery<Country> query = em.createQuery(criteriaQuery);
-        List<Country> resultList = new ArrayList<Country>();
-        if ((startPosition == null) && (maxResultCount == null)) {
-            resultList = query.getResultList();
-        } else if ((startPosition == null) && (maxResultCount >= 0L)) {
-            int maxResult = Integer.parseInt(Long.toString(maxResultCount));
-            resultList = query.setMaxResults(maxResult).getResultList();
-        } else if ((startPosition != null) && (startPosition >= 0L) && (maxResultCount == null)) {
-            int position = Integer.parseInt(Long.toString(startPosition));
-            resultList = query.setFirstResult(position).getResultList();
-        } else if ((startPosition != null) && (startPosition >= 0L) && (maxResultCount >= 0L)) {
-            int position = Integer.parseInt(Long.toString(startPosition));
-            int maxResult = Integer.parseInt(Long.toString(maxResultCount));
-            resultList = query.setFirstResult(position).setMaxResults(maxResult).getResultList();
-        } else {
-            resultList = new ArrayList<Country>();
-        }
+        PhoneNumberServiceImpl.applyRangeToQuery(query, startPosition, maxResultCount);
+        List<Country> resultList = query.getResultList();
         return resultList;
     }
 
@@ -308,6 +524,13 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
         return getCountryByCountryCode(countryISO3166A2Code);
     }
 
+    /**
+     * Get the country based on country code (ISO3166-alpha-2).
+     * 
+     * @param countryISO3166A2Code
+     *            the country code (ISO3166-alpha-2).
+     * @return the Country if exist, otherwise <code>null</code>.
+     */
     private Country getCountryByCountryCode(final String countryISO3166A2Code) {
         CriteriaBuilder cb = em.getCriteriaBuilder();
         CriteriaQuery<Country> criteriaQuery = cb.createQuery(Country.class);
@@ -329,6 +552,13 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
         return null;
     }
 
+    /**
+     * Get the subscriber number length based on area id.
+     * 
+     * @param areaId
+     *            the id of the area.
+     * @return the subscriber number length. If not find return <code>null</code>.
+     */
     private Integer getSubscriberNumberLengthByAreaId(final long areaId) {
         CriteriaBuilder cb = em.getCriteriaBuilder();
         CriteriaQuery<Integer> criteriaQuery = cb.createQuery(Integer.class);
@@ -348,15 +578,43 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
         return null;
     }
 
+    /**
+     * Get the verifiable phone id based on verifiable data id.
+     * 
+     * @param verifiableDataId
+     *            the id of the verifiable data.
+     * @return the verifiable phone id. If not finds return <code>null</code>.
+     */
+    private Long getVerifiablePhoneIdByVerifiableDataId(final long verifiableDataId) {
+        CriteriaBuilder cb = em.getCriteriaBuilder();
+        CriteriaQuery<Long> criteriaQuery = cb.createQuery(Long.class);
+
+        Root<PhoneNumberVerifiablePhoneEntity> root =
+                criteriaQuery.from(PhoneNumberVerifiablePhoneEntity.class);
+
+        criteriaQuery.select(root.get(PhoneNumberVerifiablePhoneEntity_.verifiablePhoneId));
+
+        Predicate predicate = cb.equal(root.get(PhoneNumberVerifiablePhoneEntity_.verifiableData),
+                em.getReference(VerifiableDataEntity.class, verifiableDataId));
+
+        criteriaQuery.where(predicate);
+        List<Long> resultList = em.createQuery(criteriaQuery).getResultList();
+        if (resultList.size() == 1) {
+            return resultList.get(0);
+        }
+        return null;
+    }
+
     @Override
     public void inactiveArea(final long areaId) {
-        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException();
+        // TODO Write the method.
     }
 
     @Override
     public void inactiveCountry(final String countryISO3166A2Code) {
-        // TODO Auto-generated method stub
-
+        throw new UnsupportedOperationException();
+        // TODO Write the method.
     }
 
     @Override
@@ -385,7 +643,7 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
             throw new NonPositiveSubscriberNumberLengthException();
         }
 
-        if (existAreaByCountryCodeAndCallNumber(countryISO3166A2Code, callNumber)) {
+        if (existActiveAreaByCountryCodeAndCallNumber(countryISO3166A2Code, callNumber)) {
             throw new DuplicateSelectableAreaException();
         }
 
@@ -404,7 +662,8 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
     public void saveCountry(final String countryISO3166A2Code, final String idd, final String ndd,
             final String countryCallCode) {
         if ((countryISO3166A2Code == null) || (idd == null) || (ndd == null) || (countryCallCode == null)) {
-            throw new IllegalArgumentException("The countryISO3166A2Code, idd, ndd, countryCallCode parameter is null.");
+            throw new IllegalArgumentException("The countryISO3166A2Code, idd, ndd, countryCallCode parameter "
+                    + "is null.");
         }
 
         if (existCountry(countryISO3166A2Code)) {
@@ -433,7 +692,7 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
         }
 
         if (subscriberNumber.length() != areaSubscriberNumberLength) {
-            throw new InvalidNumberException();
+            throw new InvalidPhoneNumberException();
         }
         PhoneNumberEntity entity = new PhoneNumberEntity();
         entity.setSubScriberNumber(subscriberNumber);
@@ -444,8 +703,61 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
         return entity.getPhoneNumberId();
     }
 
+    /**
+     * Save and creating verifiable phone and verification request (in the beginning the phonenumber_ table).
+     * 
+     * @param phoneNumberId
+     *            the id of the phone number.
+     * @param verifiableDataId
+     *            the id of the verifiable data.
+     * @param verificationRequestId
+     *            the id of the verification request.
+     * @param verificationChannel
+     *            the {@link VerificationChannel}.
+     */
+    private void saveVerifiablePhone(final long phoneNumberId, final long verifiableDataId,
+            final long verificationRequestId, final VerificationChannel verificationChannel) {
+        if (verificationChannel == null) {
+            throw new IllegalArgumentException("The verificationChannel is null. Cannot be null.");
+        }
+
+        if (!existPhoneNumber(phoneNumberId)) {
+            throw new NoSuchPhoneNumberException();
+        }
+
+        if (!existVerifiableData(verifiableDataId)) {
+            throw new NoSuchVerifiableDataException();
+        }
+
+        if (!existVerificationRequest(verificationRequestId)) {
+            throw new NoSuchVerificationRequestException();
+        }
+
+        PhoneNumberVerifiablePhoneEntity verifiablePhoneEntity = new PhoneNumberVerifiablePhoneEntity();
+        verifiablePhoneEntity.setPhoneNumber(em.getReference(PhoneNumberEntity.class, phoneNumberId));
+        verifiablePhoneEntity.setVerifiableData(em.getReference(VerifiableDataEntity.class, verifiableDataId));
+        em.persist(verifiablePhoneEntity);
+
+        PhoneNumberVerificationRequestEntity verificationRequestEntity = new PhoneNumberVerificationRequestEntity();
+        verificationRequestEntity.setVerificationChannel(verificationChannel);
+        verificationRequestEntity.setVerificationRequest(em.getReference(VerificationRequestEntity.class,
+                verificationRequestId));
+        verificationRequestEntity.setVerifiablePhone(em.getReference(PhoneNumberVerifiablePhoneEntity.class,
+                verifiablePhoneEntity.getVerifiablePhoneId()));
+        em.persist(verificationRequestEntity);
+        em.flush();
+    }
+
     public void setEm(final EntityManager em) {
         this.em = em;
+    }
+
+    public void setSmsSender(final SMSSender smsSender) {
+        this.smsSender = smsSender;
+    }
+
+    public void setVerifyService(final VerifyService verifyService) {
+        this.verifyService = verifyService;
     }
 
     @Override
@@ -465,7 +777,7 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
         }
 
         if (areaSubscriberNumberLength != subscriberNumber.length()) {
-            throw new InvalidNumberException();
+            throw new InvalidPhoneNumberException();
         }
 
         pnEntity.setExtension(extension);
@@ -477,7 +789,22 @@ public class PhoneNumberServiceImpl implements PhoneNumberService {
 
     @Override
     public PhoneVerificationResult verifyPhoneNumber(final String tokenUUID) {
-        // TODO Auto-generated method stub
-        return null;
+        if (tokenUUID == null) {
+            throw new IllegalArgumentException("The tokenUUID is null. Cannot be null.");
+        }
+        PhoneVerificationResult result = null;
+        VerificationResult verifyData = verifyService.verifyData(tokenUUID);
+        if (verifyData != null) {
+            Long verifiablePhoneId = getVerifiablePhoneIdByVerifiableDataId(verifyData.getVerifiableDataId());
+            if (verifiablePhoneId != null) {
+                result = new PhoneVerificationResult(verifiablePhoneId,
+                        determinePhoneNumberConfirmationResult(verifyData.getTokenUsageResult()));
+            } else {
+                result = new PhoneVerificationResult(null, PhoneNumberConfirmationResult.FAILED);
+            }
+        } else {
+            result = new PhoneVerificationResult(null, PhoneNumberConfirmationResult.FAILED);
+        }
+        return result;
     }
 }

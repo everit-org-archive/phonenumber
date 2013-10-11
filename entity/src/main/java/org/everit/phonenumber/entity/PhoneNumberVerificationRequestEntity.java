@@ -30,7 +30,7 @@ import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
-import org.everit.phonenumber.api.enums.VerificationType;
+import org.everit.phonenumber.api.enums.VerificationChannel;
 import org.everit.verifiabledata.entity.VerificationRequestEntity;
 
 /**
@@ -67,7 +67,7 @@ public class PhoneNumberVerificationRequestEntity {
      */
     @Enumerated(EnumType.STRING)
     @Column(name = "VERIFICATION_CHANNEL")
-    private VerificationType verificationChannel;
+    private VerificationChannel verificationChannel;
 
     /**
      * The default constructor.
@@ -85,12 +85,12 @@ public class PhoneNumberVerificationRequestEntity {
      * @param verificationRequest
      *            the {@link VerificationRequestEntity} object.
      * @param verificationChannel
-     *            the {@link VerificationType}.
+     *            the {@link VerificationChannel}.
      */
     public PhoneNumberVerificationRequestEntity(final long phoneNumberVerificationRequestId,
             final PhoneNumberVerifiablePhoneEntity verifiablePhone,
             final VerificationRequestEntity verificationRequest,
-            final VerificationType verificationChannel) {
+            final VerificationChannel verificationChannel) {
         this.phoneNumberVerificationRequestId = phoneNumberVerificationRequestId;
         this.verifiablePhone = verifiablePhone;
         this.verificationRequest = verificationRequest;
@@ -105,7 +105,7 @@ public class PhoneNumberVerificationRequestEntity {
         return verifiablePhone;
     }
 
-    public VerificationType getVerificationChannel() {
+    public VerificationChannel getVerificationChannel() {
         return verificationChannel;
     }
 
@@ -121,7 +121,7 @@ public class PhoneNumberVerificationRequestEntity {
         this.verifiablePhone = verifiablePhone;
     }
 
-    public void setVerificationChannel(final VerificationType verificationChannel) {
+    public void setVerificationChannel(final VerificationChannel verificationChannel) {
         this.verificationChannel = verificationChannel;
     }
 

@@ -27,32 +27,7 @@ import java.util.List;
 import org.everit.phonenumber.api.dto.Area;
 import org.everit.phonenumber.api.dto.CallablePhoneNumber;
 import org.everit.phonenumber.api.dto.Country;
-import org.everit.phonenumber.api.exceptions.DuplicateCountryException;
-import org.everit.phonenumber.api.exceptions.NoSuchAreaException;
-import org.everit.phonenumber.api.exceptions.NoSuchPhoneNumberException;
-import org.everit.phonenumber.api.exceptions.NonPositiveSubscriberNumberLengthException;
 import org.everit.verifiabledata.api.enums.VerificationLengthBase;
-
-/*
- * Copyright (c) 2011, Everit Kft.
- *
- * All rights reserved.
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
- * MA 02110-1301  USA
- */
 
 /**
  * Service for managing the phone number function.
@@ -63,15 +38,23 @@ public interface PhoneNumberService {
      * Create verification request and send SMS to verify the phone number.
      * 
      * @param phoneNumberId
-     *            the id of the phone number.
+     *            the id of the phone number. Must be exist.
      * @param messagetemplate
-     *            the messageTemplate.
+     *            the messageTemplate. Replace the $acceptToken to the verify token and the $rejectToken to the reject
+     *            token, if exist this variables in the messageTemplate. Cannot be <code>null</code>.
      * @param tokenValidityEndDate
-     *            the token validity end date.
+     *            the token validity end date. Cannot be <code>null</code>.
      * @param verificationLength
-     *            the verification length.
+     *            the verification length in seconds. Must be positive.
      * @param verificationLengthBase
-     *            the {@link VerificationLengthBase}.
+     *            the {@link VerificationLengthBase}. Cannot be <code>null</code>.
+     * 
+     * @throws IllegalArgumentException
+     *             if the messageTemplate or tokenValidityEndData or verificationLengthBase is <code>null</code>.
+     * @throws NoSuchPhoneNumberException
+     *             if not exist the phone number record.
+     * @throws NonPositiveVerificationLength
+     *             if the verificationLength is not positive.
      */
     void createVerificationRequestViaSMS(long phoneNumberId, String messagetemplate,
             Date tokenValidityEndDate, long verificationLength, VerificationLengthBase verificationLengthBase);
@@ -214,7 +197,8 @@ public interface PhoneNumberService {
      * @throws IllegalArgumentException
      *             if countryISO3166A2Code, idd, ndd or countryCallCode parameter is <code>null</code>.
      */
-    void saveCountry(final String countryISO3166A2Code, final String idd, final String ndd, final String countryCallCode);
+    void saveCountry(final String countryISO3166A2Code, final String idd,
+            final String ndd, final String countryCallCode);
 
     /**
      * Saving the phone number in the database.
@@ -231,7 +215,7 @@ public interface PhoneNumberService {
      *             if the subscriber number parameter is <code>null</code>.
      * @throws NoSuchAreaException
      *             if not exist area.
-     * @throws InvalidNumberException
+     * @throws InvalidPhoneNumberException
      *             if the number length is not correct.
      */
     long savePhoneNumber(final long areaId, final String subscriberNumber, final String extension);
@@ -255,7 +239,7 @@ public interface PhoneNumberService {
      *             if not exist phone number.
      * @throws NoSuchAreaException
      *             if not exist area.
-     * @throws InvalidNumberException
+     * @throws InvalidPhoneNumberException
      *             if the subscriber number length is not correct.
      */
     void updatePhoneNumber(final long phoneNumberId, final long areaId, final String subscriberNumber,
@@ -265,8 +249,11 @@ public interface PhoneNumberService {
      * Verify the phone number.
      * 
      * @param tokenUUID
-     *            the token UUID.
+     *            the token UUID. Cannot be <code>null</code>.
      * @return the {@link PhoneVerificationResult} object.
+     * 
+     * @throws IllegalArgumentException
+     *             if the tokenUUID parameter is <code>null</code>.
      */
     PhoneVerificationResult verifyPhoneNumber(String tokenUUID);
 

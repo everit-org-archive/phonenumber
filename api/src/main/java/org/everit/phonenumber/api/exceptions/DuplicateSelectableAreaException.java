@@ -21,6 +21,9 @@ package org.everit.phonenumber.api.exceptions;
  * MA 02110-1301  USA
  */
 
+/**
+ * DuplicateSelectableAreaException is throw when try save the already existing active area.
+ */
 public class DuplicateSelectableAreaException extends RuntimeException {
 
     /**
@@ -29,7 +32,7 @@ public class DuplicateSelectableAreaException extends RuntimeException {
     private static final long serialVersionUID = 7896934198922932708L;
 
     /**
-     * The simple constructor.
+     * The default constructor with "Existing the area code which belong the country code." error message.
      */
     public DuplicateSelectableAreaException() {
         super("Existing the area code which belong the country code.");

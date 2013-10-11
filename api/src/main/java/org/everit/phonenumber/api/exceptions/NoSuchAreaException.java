@@ -21,6 +21,9 @@ package org.everit.phonenumber.api.exceptions;
  * MA 02110-1301  USA
  */
 
+/**
+ * NoSuchAreaException is throw when the area is not exist in the database.
+ */
 public class NoSuchAreaException extends RuntimeException {
 
     /**
@@ -28,6 +31,9 @@ public class NoSuchAreaException extends RuntimeException {
      */
     private static final long serialVersionUID = -3175204663026444381L;
 
+    /**
+     * The default constructor with "Not exist the area." error message.
+     */
     public NoSuchAreaException() {
         super("Not exist the area.");
     }

@@ -1,7 +1,5 @@
 package org.everit.phonenumber.itests.core;
 
-import org.junit.Test;
-
 /*
  * Copyright (c) 2011, Everit Kft.
  *
@@ -23,11 +21,15 @@ import org.junit.Test;
  * MA 02110-1301  USA
  */
 
+import org.junit.Test;
+
+/**
+ * Test interface for testing {@link PhoneNumberService}.
+ */
 public interface PhoneNumberServiceTest {
 
     /**
-     * Testing all functions. The order is important especially the phone number country because limiting the country
-     * code.
+     * Testing all functions. The order is important especially the countries because limiting the country code.
      */
     @Test
     void test();

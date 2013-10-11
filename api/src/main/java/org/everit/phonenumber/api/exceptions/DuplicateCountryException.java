@@ -21,6 +21,9 @@ package org.everit.phonenumber.api.exceptions;
  * MA 02110-1301  USA
  */
 
+/**
+ * DuplicateCountryException is throw when try save the already existing country.
+ */
 public class DuplicateCountryException extends RuntimeException {
 
     /**
@@ -28,6 +31,9 @@ public class DuplicateCountryException extends RuntimeException {
      */
     private static final long serialVersionUID = -3772256083480850587L;
 
+    /**
+     * The default constructor with "Already exist country in the database." error message.
+     */
     public DuplicateCountryException() {
         super("Already exist country in the database.");
     }

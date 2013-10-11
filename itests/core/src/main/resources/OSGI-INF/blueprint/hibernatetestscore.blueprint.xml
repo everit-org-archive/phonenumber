@@ -25,8 +25,11 @@
 
     <reference id="phoneNumberService" interface="org.everit.phonenumber.api.PhoneNumberService" />
 
+    <reference id="dummySMSSender" interface="org.everit.smssender.dummy.core.api.DummySMSSender" />
+    
     <bean id="phoneNumberServiceTest" class="org.everit.phonenumber.itests.core.PhoneNumberServiceTestImpl">
         <property name="phoneNumberService" ref="phoneNumberService" />
+        <property name="dummySMSSender" ref="dummySMSSender" />
     </bean>
 
     <service id="testemailAddressDataService" interface="org.everit.phonenumber.itests.core.PhoneNumberServiceTest"

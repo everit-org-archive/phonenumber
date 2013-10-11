@@ -65,8 +65,8 @@
 
 	<dependencies>
         <dependency>
-            <groupId>org.everit.emailaddress</groupId>
-            <artifactId>org.everit.emailaddress.api</artifactId>
+            <groupId>org.everit.verifiabledata</groupId>
+            <artifactId>org.everit.verifiabledata.api</artifactId>
             <version>0.1.0-SNAPSHOT</version>
         </dependency>
 	</dependencies>
