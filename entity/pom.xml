@@ -55,41 +55,10 @@
                     </instructions>
                 </configuration>
             </plugin>
-<!--             <plugin> -->
-<!--                 <groupId>org.apache.maven.plugins</groupId> -->
-<!--                 <artifactId>maven-compiler-plugin</artifactId> -->
-<!--                 <configuration> -->
-<!--                     <compilerArgument>-proc:none</compilerArgument> -->
-<!--                 </configuration> -->
-<!--             </plugin> -->
-<!--             <plugin> -->
-<!--                 <groupId>org.bsc.maven</groupId> -->
-<!--                 <artifactId>maven-processor-plugin</artifactId> -->
-<!--                 <version>2.1.0</version> -->
-<!--                 <executions> -->
-<!--                     <execution> -->
-<!--                         <id>process</id> -->
-<!--                         <goals> -->
-<!--                             <goal>process</goal> -->
-<!--                         </goals> -->
-<!--                         <phase>generate-sources</phase> -->
-<!--                         <configuration> -->
-<!--                             <processors> -->
-<!--                                 <processor>org.hibernate.jpamodelgen.JPAMetaModelEntityProcessor</processor> -->
-<!--                             </processors> -->
-<!--                         </configuration> -->
-<!--                     </execution> -->
-<!--                 </executions> -->
-<!--             </plugin> -->
         </plugins>
     </build>
 
     <dependencies>
-<!--         <dependency> -->
-<!--             <groupId>org.hibernate</groupId> -->
-<!--             <artifactId>hibernate-jpamodelgen</artifactId> -->
-<!--             <version>1.2.0.Final</version> -->
-<!--         </dependency> -->
         <dependency>
             <groupId>javax.persistence</groupId>
             <artifactId>com.springsource.javax.persistence</artifactId>

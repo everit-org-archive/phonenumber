@@ -72,7 +72,7 @@
                         <configuration>
                             <environments>
                                 <environment>
-                                    <id>equinoxtest</id>
+                                    <id>phonenumber_equinox_test</id>
                                     <framework>equinox</framework>
                                     <systemProperties>
 <!--                                         <osgi.console>6667</osgi.console> -->
@@ -120,7 +120,7 @@
         <dependency>
             <groupId>org.osgi</groupId>
             <artifactId>org.osgi.core</artifactId>
-            <version>4.2.0</version>
+            <version>4.3.1</version>
             <scope>provided</scope>
         </dependency>
 

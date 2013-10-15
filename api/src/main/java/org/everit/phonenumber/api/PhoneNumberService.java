@@ -119,7 +119,7 @@ public interface PhoneNumberService {
      * @param areaId
      *            the id of the area.
      */
-    void inactiveArea(final long areaId);
+    void inactivateArea(final long areaId);
 
     /**
      * Deactivating the country. Cancel all number which belongs to country.
@@ -127,7 +127,7 @@ public interface PhoneNumberService {
      * @param countryISO3166A2Code
      *            the country code.
      */
-    void inactiveCountry(final String countryISO3166A2Code);
+    void inactivateCountry(final String countryISO3166A2Code);
 
     /**
      * Listing active areas based on the countryISO3166A2Code.
